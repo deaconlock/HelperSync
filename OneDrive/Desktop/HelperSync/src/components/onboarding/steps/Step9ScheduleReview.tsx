@@ -332,16 +332,16 @@ function buildSlides(
   // ---- SLIDE 2: Meals & Cooking ----
   if (mealTasks.length > 0) {
     const breakfastDays = new Set(
-      tasks.filter((d) => d.tasks.some((t) => t.category === "Meal Prep" && timeToMinutes(t.time) < 540)).map((d) => d.day)
+      tasks.filter((d) => d.tasks.some((t) => t.category === "Meal Prep" && timeToMinutes(t.time) < 660)).map((d) => d.day)
     ).size;
     const lunchDays = new Set(
       tasks.filter((d) => d.tasks.some((t) => {
         const m = timeToMinutes(t.time);
-        return t.category === "Meal Prep" && m >= 660 && m < 840;
+        return t.category === "Meal Prep" && m >= 660 && m < 900;
       })).map((d) => d.day)
     ).size;
     const dinnerDays = new Set(
-      tasks.filter((d) => d.tasks.some((t) => t.category === "Meal Prep" && timeToMinutes(t.time) >= 960)).map((d) => d.day)
+      tasks.filter((d) => d.tasks.some((t) => t.category === "Meal Prep" && timeToMinutes(t.time) >= 900)).map((d) => d.day)
     ).size;
     const snackCount = mealTasks.filter((t) => {
       const m = timeToMinutes(t.time);
@@ -362,10 +362,11 @@ function buildSlides(
 
     const uniqueMealNames = [...new Set(mealTasks.map((t) => t.taskName))];
 
-    const mealRows: Array<{ emoji: string; name: string; verdict: { label: string; status: "full" | "partial" | "none" } }> = [];
-    if (breakfastDays > 0) mealRows.push({ emoji: "🌅", name: "Breakfast", verdict: bVerdict });
-    if (lunchDays > 0) mealRows.push({ emoji: "☀️", name: "Lunch", verdict: lVerdict });
-    if (dinnerDays > 0) mealRows.push({ emoji: "🌙", name: "Dinner", verdict: dVerdict });
+    const mealRows: Array<{ emoji: string; name: string; verdict: { label: string; status: "full" | "partial" | "none" } }> = [
+      { emoji: "🌅", name: "Breakfast", verdict: bVerdict },
+      { emoji: "☀️", name: "Lunch", verdict: lVerdict },
+      { emoji: "🌙", name: "Dinner", verdict: dVerdict },
+    ];
     if (snackCount > 0) mealRows.push({ emoji: "🍪", name: "Snacks & prep", verdict: { label: `${snackCount}x/week`, status: snackCount >= 5 ? "full" : "partial" } });
 
     slides.push({
