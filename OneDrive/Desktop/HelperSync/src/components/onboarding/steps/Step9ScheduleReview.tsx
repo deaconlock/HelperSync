@@ -12,6 +12,8 @@ import {
   Camera,
   CheckCircle,
   Pencil,
+  HelpCircle,
+  X as XIcon,
 } from "lucide-react";
 import {
   DayTasks,
@@ -68,6 +70,41 @@ const REFINE_STEPS = [
   "Optimizing the new plan...",
   "Finalizing changes...",
 ];
+
+// --- Help Tooltip ---
+
+function HelpTooltip({ content }: { content: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label={open ? "Hide help" : "Show help"}
+        aria-expanded={open}
+        className="text-white/50 hover:text-white/90 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded-full"
+      >
+        <HelpCircle className="w-4 h-4" />
+      </button>
+      {open && (
+        <div
+          role="tooltip"
+          className="absolute left-6 top-0 z-50 w-64 rounded-xl bg-white/95 text-gray-700 text-xs shadow-xl p-3 leading-relaxed"
+        >
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Close help"
+            className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+          >
+            <XIcon className="w-3 h-3" />
+          </button>
+          {content}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // --- Helpers ---
 
@@ -1030,9 +1067,12 @@ function ScheduleSlideshow({
                   <div className="w-10 h-10 rounded-full backdrop-blur-sm bg-white/10 border border-white/20 flex items-center justify-center mb-3">
                     <span className="text-lg">{slides[currentIndex].emoji}</span>
                   </div>
-                  <h3 className="text-2xl font-display font-bold text-white">
-                    {slides[currentIndex].title}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-2xl font-display font-bold text-white">
+                      {slides[currentIndex].title}
+                    </h3>
+                    <HelpTooltip content="This summary shows how well your helper's schedule covers each area. 'Daily' means every day, 'Most days' means 5–6 days, 'Some days' means 1–4 days. Tap any category to give feedback and refine the plan." />
+                  </div>
                   {slides[currentIndex].subtitle && (
                     <p className="text-sm text-white/60 mt-1">{slides[currentIndex].subtitle}</p>
                   )}

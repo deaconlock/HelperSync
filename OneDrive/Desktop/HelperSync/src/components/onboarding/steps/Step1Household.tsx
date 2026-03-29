@@ -45,9 +45,7 @@ interface Step1Props {
 }
 
 export function Step1Household({ rooms, homeName, homeDescription, homeSize, onUpdate }: Step1Props) {
-  const [description, setDescription] = useState(
-    homeDescription || "4-room HDB, master bedroom, 2 common bedrooms, living room, dining area, kitchen, 2 bathrooms, yard"
-  );
+  const [description, setDescription] = useState(homeDescription || "");
   const [localRooms, setLocalRooms] = useState<string[]>(rooms);
   const [localHomeName, setLocalHomeName] = useState(homeName);
   const [localSize, setLocalSize] = useState<HomeSize>(homeSize);

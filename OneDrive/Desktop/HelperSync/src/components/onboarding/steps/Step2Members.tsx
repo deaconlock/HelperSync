@@ -117,14 +117,19 @@ export function Step2Members({ members, onUpdate }: Step2Props) {
                   Age (optional)
                 </label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={member.age ?? ""}
-                  onChange={(e) =>
-                    updateMember(i, "age", parseInt(e.target.value) || 0)
-                  }
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/\D/g, "");
+                    if (raw === "") {
+                      updateMember(i, "age", undefined);
+                    } else {
+                      const num = Math.min(120, Math.max(0, parseInt(raw, 10)));
+                      updateMember(i, "age", num);
+                    }
+                  }}
                   placeholder="Age"
-                  min={0}
-                  max={120}
                   className="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                 />
               </div>
