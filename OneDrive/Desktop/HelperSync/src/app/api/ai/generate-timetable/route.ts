@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
   try {
     const claude = getClaudeClient();
     const message = await claude.messages.create({
-      model: MODEL,
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 16000,
       messages: [
         {
