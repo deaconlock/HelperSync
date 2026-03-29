@@ -7,6 +7,7 @@ import {
   CalendarDays,
   Calendar,
   User,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +16,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/timetable", icon: CalendarDays, label: "Timetable" },
   { href: "/dashboard/leave", icon: Calendar, label: "Days Off" },
   { href: "/dashboard/helper-profile", icon: User, label: "Helper" },
+  { href: "/dashboard/account", icon: Settings, label: "Account" },
 ];
 
 export function SidebarNav() {
