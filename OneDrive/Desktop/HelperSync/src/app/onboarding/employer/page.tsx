@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { useAuth } from "@clerk/nextjs";
 import { useConvexAuth } from "convex/react";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { HouseholdMember, HelperDetails } from "@/types/household";
 import { DayAvailability } from "@/types/schedule";
 import { DayTasks } from "@/types/timetable";
@@ -91,7 +92,7 @@ const initialData: WizardData = {
 
 const TOTAL_STEPS = 9;
 
-export default function EmployerOnboardingPage() {
+function EmployerOnboardingPage() {
   const router = useRouter();
   const { isSignedIn } = useAuth();
   const { isAuthenticated } = useConvexAuth();
@@ -330,5 +331,13 @@ export default function EmployerOnboardingPage() {
         <StepSignUp onComplete={handleComplete} />
       )}
     </WizardShell>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense>
+      <EmployerOnboardingPage />
+    </Suspense>
   );
 }
