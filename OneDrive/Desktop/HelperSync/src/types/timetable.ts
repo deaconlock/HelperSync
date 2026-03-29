@@ -1,0 +1,78 @@
+export type TaskCategory =
+  | "Household Chores"
+  | "Baby Care"
+  | "Elderly Care"
+  | "Meal Prep"
+  | "Errands"
+  | "Break";
+
+export type DayOfWeek =
+  | "monday"
+  | "tuesday"
+  | "wednesday"
+  | "thursday"
+  | "friday"
+  | "saturday"
+  | "sunday";
+
+export const DAYS_OF_WEEK: DayOfWeek[] = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+];
+
+export const DAY_LABELS: Record<DayOfWeek, string> = {
+  monday: "Monday",
+  tuesday: "Tuesday",
+  wednesday: "Wednesday",
+  thursday: "Thursday",
+  friday: "Friday",
+  saturday: "Saturday",
+  sunday: "Sunday",
+};
+
+export const CATEGORY_COLORS: Record<string, string> = {
+  "Household Chores": "bg-slate-50 text-slate-700 border-slate-200",
+  "Baby Care": "bg-emerald-50 text-emerald-700 border-emerald-100",
+  "Elderly Care": "bg-violet-50 text-violet-700 border-violet-100",
+  "Meal Prep": "bg-amber-50 text-amber-700 border-amber-100",
+  Errands: "bg-rose-50 text-rose-700 border-rose-100",
+  Break: "bg-teal-50 text-teal-600 border-teal-100",
+};
+
+export const CATEGORY_EMOJIS: Record<string, string> = {
+  "Household Chores": "🧹",
+  "Baby Care": "🍼",
+  "Elderly Care": "👴",
+  "Meal Prep": "🍳",
+  Errands: "🛍️",
+  Break: "☕",
+};
+
+export interface TaskItem {
+  taskId: string;
+  time: string;
+  duration?: number; // in minutes, default 30
+  taskName: string;
+  area: string;
+  category: string;
+  recurring: boolean;
+  requiresPhoto: boolean;
+  emoji?: string;
+  notes?: string;
+}
+
+export interface DayTasks {
+  day: DayOfWeek;
+  tasks: TaskItem[];
+}
+
+export interface TimetableDoc {
+  _id: string;
+  householdId: string;
+  weeklyTasks: DayTasks[];
+}
