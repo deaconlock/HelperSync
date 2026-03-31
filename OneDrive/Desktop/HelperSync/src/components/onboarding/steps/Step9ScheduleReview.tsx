@@ -49,6 +49,11 @@ interface Step9Props {
   onUpdate: (tasks: DayTasks[]) => void;
   onComplete: () => void | Promise<void>;
   wizardData: WizardContext;
+  seg2Result: DayTasks[] | null;
+  seg3Result: DayTasks[] | null;
+  seg23Error: boolean;
+  onSegmentsArrived: (days: DayTasks[]) => void;
+  onRetrySeg23: () => void;
 }
 
 interface SlideData {
@@ -1147,10 +1152,14 @@ function ScheduleSlideshow({
 
 // --- Main Component ---
 
-export function Step9ScheduleReview({ weeklyTasks, rooms, onUpdate, onComplete, wizardData }: Step9Props) {
+const PENDING_DAYS_INITIAL = new Set(["thursday", "friday", "saturday", "sunday"]);
+const DAY_ORDER = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+
+export function Step9ScheduleReview({ weeklyTasks, rooms, onUpdate, onComplete, wizardData, seg2Result, seg3Result, seg23Error, onSegmentsArrived, onRetrySeg23 }: Step9Props) {
   const [phase, setPhase] = useState<Phase>("slideshow");
   const [localTasks, setLocalTasks] = useState<DayTasks[]>(weeklyTasks);
   const [selectedDay, setSelectedDay] = useState<DayOfWeek>("monday");
+  const [pendingDays, setPendingDays] = useState<Set<string>>(new Set(PENDING_DAYS_INITIAL));
   const [addDialog, setAddDialog] = useState<{ day: string; task?: TaskItem } | null>(null);
   const [feedback, setFeedback] = useState("");
   const [categoryFeedback, setCategoryFeedback] = useState<Record<string, string>>({});
@@ -1166,6 +1175,24 @@ export function Step9ScheduleReview({ weeklyTasks, rooms, onUpdate, onComplete, 
     () => buildSlides(localTasks, wizardData, categoryFeedback, handleCategoryFeedbackChange, hasRefined),
     [localTasks, wizardData, categoryFeedback, handleCategoryFeedbackChange, hasRefined]
   );
+
+  // Merge incoming segments into localTasks as they arrive
+  useEffect(() => {
+    const arrived: DayTasks[] = [];
+    if (seg2Result) arrived.push(...seg2Result);
+    if (seg3Result) arrived.push(...seg3Result);
+    if (arrived.length === 0) return;
+    setLocalTasks((prev) => {
+      const existing = prev.filter((d) => !arrived.find((a) => a.day === d.day));
+      return [...existing, ...arrived].sort((a, b) => DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day));
+    });
+    setPendingDays((prev) => {
+      const next = new Set(prev);
+      arrived.forEach((d) => next.delete(d.day));
+      return next;
+    });
+    onSegmentsArrived(arrived);
+  }, [seg2Result, seg3Result]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateAndSync = (updated: DayTasks[]) => {
     setLocalTasks(updated);
@@ -1215,18 +1242,29 @@ export function Step9ScheduleReview({ weeklyTasks, rooms, onUpdate, onComplete, 
         }),
       });
 
-      if (res.ok) {
-        const { weeklyTasks: newTasks } = await res.json();
-        setLocalTasks(newTasks);
-        onUpdate(newTasks);
-        setFeedback("");
-        setCategoryFeedback({});
-        setHasRefined(true);
-        // Small delay so progress animation completes visually before resetting
-        setTimeout(() => {
-          setResetKey((k) => k + 1);
-          toast.success("Schedule refined! Swipe through to see changes.");
-        }, 600);
+      if (res.ok && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          accumulated += decoder.decode(value, { stream: true });
+        }
+        const jsonMatch = accumulated.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          const newTasks = JSON.parse(jsonMatch[0]);
+          setLocalTasks(newTasks);
+          onUpdate(newTasks);
+          setFeedback("");
+          setCategoryFeedback({});
+          setHasRefined(true);
+          // Small delay so progress animation completes visually before resetting
+          setTimeout(() => {
+            setResetKey((k) => k + 1);
+            toast.success("Schedule refined! Swipe through to see changes.");
+          }, 600);
+        }
       }
     } catch {
       // Silent fail — user can retry
@@ -1313,22 +1351,34 @@ export function Step9ScheduleReview({ weeklyTasks, rooms, onUpdate, onComplete, 
         </p>
       </div>
 
+      {/* Seg 2+3 error banner */}
+      {seg23Error && pendingDays.size > 0 && (
+        <div className="flex items-center justify-between bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+          <p className="text-xs text-red-600">Thu–Sun couldn&apos;t be generated.</p>
+          <button onClick={onRetrySeg23} className="text-xs font-semibold text-red-600 underline ml-2">Retry</button>
+        </div>
+      )}
+
       {/* Day selector strip */}
       <div className="flex gap-1">
         {DAYS_OF_WEEK.map((day) => {
           const isSelected = selectedDay === day;
+          const isPending = pendingDays.has(day);
           return (
             <button
               key={day}
-              onClick={() => setSelectedDay(day)}
+              onClick={() => !isPending && setSelectedDay(day)}
+              disabled={isPending}
               className={cn(
                 "flex-1 min-w-0 flex items-center justify-center py-2 rounded-xl text-xs font-medium transition-all",
                 isSelected
                   ? "bg-gray-900 text-white shadow-sm"
+                  : isPending
+                  ? "bg-gray-50 text-gray-300 cursor-wait"
                   : "bg-gray-50 text-gray-600 hover:bg-gray-100"
               )}
             >
-              {DAY_LABELS[day].slice(0, 3)}
+              {isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : DAY_LABELS[day].slice(0, 3)}
             </button>
           );
         })}
@@ -1370,15 +1420,27 @@ export function Step9ScheduleReview({ weeklyTasks, rooms, onUpdate, onComplete, 
 
       {/* Timeline */}
       <div className="bg-white rounded-2xl border border-border overflow-hidden" style={{ height: "min(70vh, 640px)" }}>
-        <DayTimelineView
-          tasks={selectedDayData?.tasks ?? []}
-          dayLabel={DAY_LABELS[selectedDay]}
-          onUpdateTask={handleTimelineUpdate}
-          onEditTask={(task) => setAddDialog({ day: selectedDay, task })}
-          onDeleteTask={handleDeleteTask}
-          showHeader={false}
-          showCurrentTime={false}
-        />
+        {pendingDays.has(selectedDay) ? (
+          <div className="flex flex-col items-center justify-center h-full gap-4 px-6 text-center">
+            <Loader2 className="w-8 h-8 text-gray-300 animate-spin" />
+            <div>
+              <p className="text-sm font-medium text-gray-700">
+                Building {DAY_LABELS[selectedDay]}&apos;s schedule...
+              </p>
+              <p className="text-xs text-text-muted mt-1">Select Mon–Wed to review while you wait</p>
+            </div>
+          </div>
+        ) : (
+          <DayTimelineView
+            tasks={selectedDayData?.tasks ?? []}
+            dayLabel={DAY_LABELS[selectedDay]}
+            onUpdateTask={handleTimelineUpdate}
+            onEditTask={(task) => setAddDialog({ day: selectedDay, task })}
+            onDeleteTask={handleDeleteTask}
+            showHeader={false}
+            showCurrentTime={false}
+          />
+        )}
       </div>
 
       {/* Week summary + Finish */}

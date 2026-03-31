@@ -25,6 +25,7 @@ interface Step5Props {
   helperDetails: HelperDetails | null;
   inviteCode: string;
   inviteQrData: string;
+  helperHasPhone?: boolean | null;
   onUpdate: (details: HelperDetails, code: string, qrData: string) => void;
 }
 
@@ -32,6 +33,7 @@ export function Step5HelperDetails({
   helperDetails,
   inviteCode,
   inviteQrData,
+  helperHasPhone,
   onUpdate,
 }: Step5Props) {
   const [details, setDetails] = useState<HelperDetails>(
@@ -151,8 +153,19 @@ export function Step5HelperDetails({
         </div>
       </div>
 
-      {/* Invite Code Section */}
-      {code && (
+      {/* Invite Code / No-phone section */}
+      {helperHasPhone === false ? (
+        <div className="bg-gray-50 rounded-2xl border border-border p-5 flex items-start gap-4">
+          <span className="text-2xl flex-shrink-0">🖨️</span>
+          <div>
+            <p className="font-medium text-gray-900 mb-1">No app needed</p>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              Your helper won&apos;t need the app. Once your schedule is set, we&apos;ll generate a
+              printable weekly checklist they can work from.
+            </p>
+          </div>
+        </div>
+      ) : code ? (
         <div className="bg-white rounded-2xl border border-border p-6 space-y-4">
           <h3 className="font-medium text-gray-900">Share with your helper</h3>
 
@@ -201,7 +214,7 @@ export function Step5HelperDetails({
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -1,15 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Users2, Heart } from "lucide-react";
+import { Plus, Trash2, Users2 } from "lucide-react";
 import { HouseholdMember, MemberRole } from "@/types/household";
+import type { SetupFor } from "@/app/onboarding/employer/page";
 
-const MOBILITY_OPTIONS: { value: NonNullable<HouseholdMember["mobilityLevel"]>; label: string }[] = [
-  { value: "independent", label: "Independent" },
-  { value: "needs_assistance", label: "Needs Assistance" },
-  { value: "wheelchair", label: "Wheelchair" },
-  { value: "bedridden", label: "Bedridden" },
+const AGE_RANGES: { label: string; value: number }[] = [
+  { label: "Under 1", value: 0 },
+  { label: "1–3", value: 2 },
+  { label: "4–12", value: 8 },
+  { label: "13–17", value: 15 },
+  { label: "18–60", value: 35 },
+  { label: "61–75", value: 68 },
+  { label: "76+", value: 80 },
 ];
+
 
 const ROLE_OPTIONS: { value: MemberRole; label: string; emoji: string }[] = [
   { value: "Husband", label: "Husband", emoji: "👨" },
@@ -21,15 +26,13 @@ const ROLE_OPTIONS: { value: MemberRole; label: string; emoji: string }[] = [
 
 interface Step2Props {
   members: HouseholdMember[];
+  setupFor: SetupFor | null;
   onUpdate: (members: HouseholdMember[]) => void;
 }
 
-export function Step2Members({ members, onUpdate }: Step2Props) {
-  const [localMembers, setLocalMembers] = useState<HouseholdMember[]>(
-    members.length > 0
-      ? members
-      : [{ name: "Baby", role: "Child", age: 1 }]
-  );
+export function Step2Members({ members, setupFor, onUpdate }: Step2Props) {
+  const isOwn = setupFor !== "family";
+  const [localMembers, setLocalMembers] = useState<HouseholdMember[]>(members);
 
   const update = (updated: HouseholdMember[]) => {
     setLocalMembers(updated);
@@ -69,10 +72,12 @@ export function Step2Members({ members, onUpdate }: Step2Props) {
           <Users2 className="w-8 h-8 text-gray-700" />
         </div>
         <h2 className="text-2xl font-display font-semibold tracking-tight text-gray-900 mb-1">
-          Who lives in your home?
+          {isOwn ? "Who does your helper care for?" : "Who does the helper care for?"}
         </h2>
         <p className="text-text-secondary text-sm max-w-md">
-          Add all household members. This helps us tailor the helper&apos;s schedule.
+          {isOwn
+            ? "Add the people in your home — your helper will plan their day around everyone's routine."
+            : "Add the people they'll be caring for — the helper will plan their day around everyone's needs."}
         </p>
       </div>
 
@@ -116,22 +121,19 @@ export function Step2Members({ members, onUpdate }: Step2Props) {
                 <label className="block text-xs font-medium text-gray-500 mb-1">
                   Age (optional)
                 </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
+                <select
                   value={member.age ?? ""}
                   onChange={(e) => {
-                    const raw = e.target.value.replace(/\D/g, "");
-                    if (raw === "") {
-                      updateMember(i, "age", undefined);
-                    } else {
-                      const num = Math.min(120, Math.max(0, parseInt(raw, 10)));
-                      updateMember(i, "age", num);
-                    }
+                    const val = e.target.value;
+                    updateMember(i, "age", val === "" ? undefined : Number(val));
                   }}
-                  placeholder="Age"
-                  className="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                />
+                  className="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors bg-white"
+                >
+                  <option value="">Select age range</option>
+                  {AGE_RANGES.map((r) => (
+                    <option key={r.label} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
               </div>
             </div>
             <button
@@ -143,83 +145,15 @@ export function Step2Members({ members, onUpdate }: Step2Props) {
             </button>
             </div>
 
-            {/* Elderly-specific detail fields */}
-            {member.role === "Elderly" && (
-              <div className="col-span-full mt-3 pt-3 border-t border-gray-100 space-y-3 animate-fade-in-up">
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-600">
-                  <Heart className="w-4 h-4 text-rose-400" />
-                  Care details for {member.name || "this member"} (all optional)
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Mobility Level</label>
-                    <select
-                      value={member.mobilityLevel ?? ""}
-                      onChange={(e) => updateMember(i, "mobilityLevel", e.target.value || undefined)}
-                      className="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
-                    >
-                      <option value="">Select...</option>
-                      {MOBILITY_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Medical Conditions</label>
-                    <input
-                      type="text"
-                      value={member.medicalConditions ?? ""}
-                      onChange={(e) => updateMember(i, "medicalConditions", e.target.value)}
-                      placeholder="e.g. diabetes, arthritis"
-                      className="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Medications & Schedule</label>
-                    <input
-                      type="text"
-                      value={member.medications ?? ""}
-                      onChange={(e) => updateMember(i, "medications", e.target.value)}
-                      placeholder="e.g. insulin at 8am & 8pm"
-                      className="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Dietary Restrictions</label>
-                    <input
-                      type="text"
-                      value={member.dietaryRestrictions ?? ""}
-                      onChange={(e) => updateMember(i, "dietaryRestrictions", e.target.value)}
-                      placeholder="e.g. low sodium, soft food only"
-                      className="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Nap Schedule</label>
-                    <input
-                      type="text"
-                      value={member.napSchedule ?? ""}
-                      onChange={(e) => updateMember(i, "napSchedule", e.target.value)}
-                      placeholder="e.g. naps 2-4pm daily"
-                      className="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Emergency Contact</label>
-                    <input
-                      type="text"
-                      value={member.emergencyContact ?? ""}
-                      onChange={(e) => updateMember(i, "emergencyContact", e.target.value)}
-                      placeholder="e.g. Dr. Lee 9123-4567"
-                      className="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         ))}
       </div>
+
+      {localMembers.length === 0 && (
+        <p className="text-center text-sm text-gray-400">
+          {isOwn ? "Add at least one household member to continue." : "Add at least one person to continue."}
+        </p>
+      )}
 
       <button
         onClick={addMember}
@@ -229,8 +163,9 @@ export function Step2Members({ members, onUpdate }: Step2Props) {
       </button>
 
       {localMembers.some((m) => m.role === "Child" || m.role === "Elderly") && (
-        <div className="bg-gray-50 rounded-2xl p-4 text-sm text-text-secondary border border-border">
-          We&apos;ll include care-related tasks for your household members in the schedule.
+        <div className="bg-gray-50 rounded-2xl p-4 text-sm text-text-secondary border border-border flex items-start gap-2">
+          <span>💛</span>
+          <p>You can add care details — medications, dietary needs, and routines — from the dashboard after setup.</p>
         </div>
       )}
     </div>

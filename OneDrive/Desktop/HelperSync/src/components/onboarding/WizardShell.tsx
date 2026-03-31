@@ -8,6 +8,7 @@ import { Logo } from "@/components/brand/Logo";
 interface WizardShellProps {
   step: number;
   totalSteps: number;
+  stepLabels?: string[];
   onNext: () => void | Promise<void>;
   onBack: () => void;
   canProceed: boolean;
@@ -20,6 +21,7 @@ interface WizardShellProps {
 export function WizardShell({
   step,
   totalSteps,
+  stepLabels,
   onNext,
   onBack,
   canProceed,
@@ -28,6 +30,7 @@ export function WizardShell({
   hideFooter,
   children,
 }: WizardShellProps) {
+  const currentLabel = stepLabels?.[step - 1];
   const contentMaxW = wide ? "max-w-6xl" : "max-w-xl";
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -36,9 +39,16 @@ export function WizardShell({
         <div className="max-w-xl mx-auto">
           <div className="flex items-center justify-between mb-3">
             <Logo size="sm" />
-            <span className="text-xs font-medium text-text-muted">
-              {step} of {totalSteps}
-            </span>
+            <div className="text-right">
+              {currentLabel && (
+                <p className="text-xs font-semibold text-gray-700 leading-none mb-0.5">
+                  {currentLabel}
+                </p>
+              )}
+              <span className="text-xs text-text-muted">
+                Step {step} of {totalSteps}
+              </span>
+            </div>
           </div>
 
           {/* Progress bar */}

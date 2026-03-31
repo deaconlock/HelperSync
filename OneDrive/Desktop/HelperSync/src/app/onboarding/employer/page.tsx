@@ -6,9 +6,9 @@ import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Loader2 } from "lucide-react";
 import { WizardShell } from "@/components/onboarding/WizardShell";
+import { Step0Qualification } from "@/components/onboarding/steps/Step0Qualification";
 import { Step1Household } from "@/components/onboarding/steps/Step1Household";
 import { Step2Members } from "@/components/onboarding/steps/Step2Members";
-import { Step3Priorities } from "@/components/onboarding/steps/Step3Priorities";
 import { Step4DailyLife } from "@/components/onboarding/steps/Step4DailyLife";
 import { Step5Experience } from "@/components/onboarding/steps/Step5Experience";
 import { Step7HelperDetails } from "@/components/onboarding/steps/Step7HelperDetails";
@@ -16,6 +16,7 @@ import { Step8Review } from "@/components/onboarding/steps/Step8Review";
 import { Step9ScheduleReview } from "@/components/onboarding/steps/Step9ScheduleReview";
 import { StepSignUp } from "@/components/onboarding/steps/StepSignUp";
 import { createInviteData } from "@/lib/invite";
+import { PersonaCard } from "@/components/onboarding/PersonaCard";
 import { toast } from "sonner";
 import { useAuth } from "@clerk/nextjs";
 import { useConvexAuth } from "convex/react";
@@ -38,7 +39,14 @@ export type HelperExperience = "new" | "some" | "experienced";
 export type HelperPace = "relaxed" | "balanced" | "intensive";
 export type HomeSize = "compact" | "midsize" | "spacious";
 
+export type SetupFor = "own" | "family";
+
 export interface WizardData {
+  // Qualifying questions (Step 1)
+  setupFor: SetupFor | null;
+  firstTimeEmployer: boolean | null;
+  householdFocus: Priority[];
+  helperHasPhone: boolean | null;
   homeName: string;
   homeDescription: string;
   homeSize: HomeSize;
@@ -49,6 +57,7 @@ export interface WizardData {
   routines: string; // kept for backward compat with localStorage
   memberRoutines: Record<string, string>;
   memberSchedules: Record<string, DayAvailability>;
+  memberQuietHours: Record<string, string>;
   helperExperience: HelperExperience | null;
   helperPace: HelperPace;
   employerAvailability: DayAvailability | null; // derived from memberSchedules for Convex
@@ -70,6 +79,10 @@ const emptyAvailability: DayAvailability = {
 };
 
 const initialData: WizardData = {
+  setupFor: null,
+  firstTimeEmployer: null,
+  householdFocus: [],
+  helperHasPhone: null,
   homeName: "",
   homeDescription: "",
   homeSize: "midsize",
@@ -80,6 +93,7 @@ const initialData: WizardData = {
   routines: "",
   memberRoutines: {},
   memberSchedules: {},
+  memberQuietHours: {},
   helperExperience: null,
   helperPace: "balanced",
   employerAvailability: null,
@@ -105,6 +119,14 @@ function EmployerOnboardingPage() {
   const [step, setStep] = useState(1);
   const [data, setData] = useState<WizardData>(initialData);
   const [hydrated, setHydrated] = useState(false);
+  const [showPersonaCard, setShowPersonaCard] = useState(false);
+  const [showStep4Reward, setShowStep4Reward] = useState(false);
+  const [seg1Result, setSeg1Result] = useState<DayTasks[] | null>(null);
+  const [seg2Result, setSeg2Result] = useState<DayTasks[] | null>(null);
+  const [seg3Result, setSeg3Result] = useState<DayTasks[] | null>(null);
+  const [seg1Error, setSeg1Error] = useState(false);
+  const [seg23Error, setSeg23Error] = useState(false);
+  const [seg1Summary, setSeg1Summary] = useState<string | null>(null);
   const [completingRef] = useState({ called: false });
 
   // Restore saved wizard state and step after hydration to avoid SSR mismatch
@@ -120,7 +142,7 @@ function EmployerOnboardingPage() {
     const savedStep = localStorage.getItem("helpersync-wizard-step");
     if (savedStep) {
       const parsed = parseInt(savedStep, 10);
-      if (parsed >= 1 && parsed <= TOTAL_STEPS) setStep(parsed);
+      if (parsed >= 1 && parsed <= 9) setStep(parsed);
     }
     setHydrated(true);
   }, []);
@@ -150,7 +172,102 @@ function EmployerOnboardingPage() {
     setStep(s);
     localStorage.setItem("helpersync-wizard-step", String(s));
   };
-  const handleNext = () => goToStep(Math.min(step + 1, TOTAL_STEPS));
+
+  const triggerSegment = useCallback(async (
+    d: WizardData,
+    days: string[],
+    onResult: (tasks: DayTasks[]) => void,
+    onError: () => void,
+    onSummary?: (s: string) => void,
+  ) => {
+    try {
+      const res = await fetch("/api/ai/generate-timetable", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          homeName: d.homeName,
+          rooms: d.rooms,
+          members: d.members,
+          helperDetails: d.helperDetails,
+          memberRoutines: d.memberRoutines,
+          memberQuietHours: d.memberQuietHours,
+          priorities: d.priorities,
+          helperExperience: d.helperExperience,
+          helperPace: d.helperPace,
+          homeSize: d.homeSize,
+          deepCleanTasks: d.deepCleanTasks,
+          daysToGenerate: days,
+        }),
+      });
+      if (!res.ok || !res.body) { onError(); return; }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += decoder.decode(value, { stream: true });
+      }
+
+      // Segment 1 returns { summary, schedule: [...] }; Segments 2+3 return bare array
+      let rawTasks: DayTasks[] | null = null;
+      const objMatch = accumulated.match(/\{[\s\S]*\}/);
+      if (objMatch) {
+        try {
+          const parsed = JSON.parse(objMatch[0]);
+          if (parsed.summary && Array.isArray(parsed.schedule)) {
+            onSummary?.(parsed.summary);
+            rawTasks = parsed.schedule;
+          }
+        } catch { /* fall through to array parse */ }
+      }
+      if (!rawTasks) {
+        const arrMatch = accumulated.match(/\[[\s\S]*\]/);
+        if (!arrMatch) { onError(); return; }
+        rawTasks = JSON.parse(arrMatch[0]);
+      }
+
+      const parsed = rawTasks;
+      if (Array.isArray(parsed) && parsed[0]?.day && parsed[0]?.tasks) {
+        const result = parsed.map((dayObj: DayTasks) => ({
+          ...dayObj,
+          tasks: dayObj.tasks.map((t) => ({
+            ...t,
+            recurring: t.recurring ?? (t.category !== "Break" && t.category !== "Errands"),
+            requiresPhoto: t.requiresPhoto ?? ["Elderly Care", "Baby Care"].includes(t.category),
+          })),
+        }));
+        onResult(result);
+      } else {
+        onError();
+      }
+    } catch {
+      onError();
+    }
+  }, []);
+
+  const handleNext = () => {
+    if (step === 1) {
+      setShowPersonaCard(true);
+      return;
+    }
+    if (step === 6) {
+      // Segment 1: Mon/Tue/Wed — fires while user reads portrait cards on step 7
+      setSeg1Result(null);
+      setSeg1Error(false);
+      setSeg1Summary(null);
+      triggerSegment(data, ["monday", "tuesday", "wednesday"], setSeg1Result, () => setSeg1Error(true), setSeg1Summary);
+    }
+    if (step === 7) {
+      // Segments 2+3 fire simultaneously as user enters the schedule editor
+      setSeg2Result(null);
+      setSeg3Result(null);
+      setSeg23Error(false);
+      triggerSegment(data, ["thursday", "friday", "saturday"], setSeg2Result, () => setSeg23Error(true));
+      triggerSegment(data, ["sunday"], setSeg3Result, () => setSeg23Error(true));
+    }
+    goToStep(Math.min(step + 1, TOTAL_STEPS));
+  };
   const handleBack = () => goToStep(Math.max(step - 1, 1));
 
   const handleComplete = async () => {
@@ -208,14 +325,19 @@ function EmployerOnboardingPage() {
 
   const canProceed = () => {
     switch (step) {
-      case 1: return data.rooms.length > 0;
-      case 2: return data.members.length > 0;
-      case 3: return data.priorities.length >= 1 && data.priorities.length <= 3;
+      case 1: return (
+        data.setupFor !== null &&
+        data.firstTimeEmployer !== null &&
+        data.householdFocus.length >= 1 &&
+        data.helperHasPhone !== null
+      );
+      case 2: return data.rooms.length > 0;
+      case 3: return data.members.length > 0;
       case 4: return true; // daily life is optional
       case 5: return data.helperExperience !== null;
-      case 6: return data.helperDetails !== null && data.inviteCode !== "";
+      case 6: return data.helperDetails !== null && (data.inviteCode !== "" || data.helperHasPhone === false);
       case 7: return data.weeklyTasks !== null;
-      case 8: return data.weeklyTasks !== null;
+      case 8: return (data.weeklyTasks?.length ?? 0) >= 7;
       case 9: return true;
       default: return false;
     }
@@ -231,11 +353,46 @@ function EmployerOnboardingPage() {
     );
   }
 
+  if (showPersonaCard) {
+    return (
+      <PersonaCard
+        setupFor={data.setupFor}
+        householdFocus={data.householdFocus}
+        firstTimeEmployer={data.firstTimeEmployer}
+        onContinue={() => {
+          setShowPersonaCard(false);
+          goToStep(2);
+        }}
+      />
+    );
+  }
+
   return (
     <WizardShell
       step={step}
       totalSteps={TOTAL_STEPS}
-      onNext={handleNext}
+      stepLabels={[
+        "About You",
+        "Your Home",
+        "Your Household",
+        "Daily Life",
+        "Your Helper",
+        "Helper Details",
+        "Build Schedule",
+        "Review Schedule",
+        "Confirm",
+      ]}
+      onNext={step === 4
+        ? () => {
+            const hasRoutines = Object.values(data.memberRoutines).some((v) => v?.trim());
+            if (hasRoutines) {
+              setShowStep4Reward(true);
+            } else {
+              goToStep(5);
+            }
+          }
+        : handleNext
+      }
       onBack={handleBack}
       canProceed={canProceed()}
       isLastStep={step === TOTAL_STEPS}
@@ -243,28 +400,38 @@ function EmployerOnboardingPage() {
       hideFooter={step === 8 || step === 9}
     >
       {step === 1 && (
+        <Step0Qualification
+          data={{
+            setupFor: data.setupFor,
+            firstTimeEmployer: data.firstTimeEmployer,
+            householdFocus: data.householdFocus,
+            helperHasPhone: data.helperHasPhone,
+          }}
+          onUpdate={(updates) => {
+            updateData(updates);
+          }}
+        />
+      )}
+      {step === 2 && (
         <Step1Household
           rooms={data.rooms}
           homeName={data.homeName}
           homeDescription={data.homeDescription}
           homeSize={data.homeSize}
+          setupFor={data.setupFor}
+          householdFocus={data.householdFocus}
+          deepCleanTasks={data.deepCleanTasks}
           onUpdate={(rooms, homeName, homeDescription, homeSize) =>
             updateData({ rooms, homeName, homeDescription, homeSize })
           }
-        />
-      )}
-      {step === 2 && (
-        <Step2Members
-          members={data.members}
-          onUpdate={(members) => updateData({ members })}
+          onDeepCleanUpdate={(deepCleanTasks) => updateData({ deepCleanTasks })}
         />
       )}
       {step === 3 && (
-        <Step3Priorities
-          priorities={data.priorities}
-          rooms={data.rooms}
-          deepCleanTasks={data.deepCleanTasks}
-          onUpdate={(priorities, deepCleanTasks) => updateData({ priorities, deepCleanTasks })}
+        <Step2Members
+          members={data.members}
+          setupFor={data.setupFor}
+          onUpdate={(members) => updateData({ members })}
         />
       )}
       {step === 4 && (
@@ -272,9 +439,14 @@ function EmployerOnboardingPage() {
           members={data.members}
           memberRoutines={data.memberRoutines}
           memberSchedules={data.memberSchedules}
+          memberQuietHours={data.memberQuietHours}
+          setupFor={data.setupFor}
+          showReward={showStep4Reward}
           onUpdate={(routines, schedules) =>
             updateData({ memberRoutines: routines, memberSchedules: schedules })
           }
+          onQuietHoursUpdate={(memberQuietHours) => updateData({ memberQuietHours })}
+          onComplete={() => { setShowStep4Reward(false); goToStep(5); }}
         />
       )}
       {step === 5 && (
@@ -289,6 +461,7 @@ function EmployerOnboardingPage() {
           helperDetails={data.helperDetails}
           inviteCode={data.inviteCode}
           inviteQrData={data.inviteQrData}
+          helperHasPhone={data.helperHasPhone}
           onUpdate={(details, code, qrData) =>
             updateData({
               helperDetails: details,
@@ -301,8 +474,18 @@ function EmployerOnboardingPage() {
       {step === 7 && (
         <Step8Review
           data={data}
+          preGenResult={seg1Result}
+          preGenError={seg1Error}
+          summary={seg1Summary}
           onTimetableGenerated={(tasks) => {
             updateData({ weeklyTasks: tasks });
+            setSeg1Result(null);
+          }}
+          onRetry={() => {
+            setSeg1Result(null);
+            setSeg1Error(false);
+            setSeg1Summary(null);
+            triggerSegment(data, ["monday", "tuesday", "wednesday"], setSeg1Result, () => setSeg1Error(true), setSeg1Summary);
           }}
         />
       )}
@@ -312,6 +495,23 @@ function EmployerOnboardingPage() {
           rooms={data.rooms}
           onUpdate={(tasks) => updateData({ weeklyTasks: tasks })}
           onComplete={() => goToStep(9)}
+          seg2Result={seg2Result}
+          seg3Result={seg3Result}
+          seg23Error={seg23Error}
+          onSegmentsArrived={(newDays) => {
+            const merged = [
+              ...(data.weeklyTasks ?? []).filter((d) => !newDays.find((n) => n.day === d.day)),
+              ...newDays,
+            ];
+            updateData({ weeklyTasks: merged });
+          }}
+          onRetrySeg23={() => {
+            setSeg2Result(null);
+            setSeg3Result(null);
+            setSeg23Error(false);
+            triggerSegment(data, ["thursday", "friday", "saturday"], setSeg2Result, () => setSeg23Error(true));
+            triggerSegment(data, ["sunday"], setSeg3Result, () => setSeg23Error(true));
+          }}
           wizardData={{
             homeName: data.homeName,
             rooms: data.rooms,

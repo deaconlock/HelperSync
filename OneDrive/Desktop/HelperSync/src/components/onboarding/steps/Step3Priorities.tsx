@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Heart, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Priority } from "@/app/onboarding/employer/page";
+import type { Priority, SetupFor } from "@/app/onboarding/employer/page";
 
 const PRIORITY_OPTIONS: { value: Priority; label: string; emoji: string; description: string }[] = [
   { value: "meals", label: "Meals & Cooking", emoji: "🍳", description: "Breakfast, lunch, dinner prep and planning" },
@@ -55,10 +55,12 @@ interface Step3Props {
   priorities: Priority[];
   rooms: string[];
   deepCleanTasks: string[];
+  setupFor: SetupFor | null;
   onUpdate: (priorities: Priority[], deepCleanTasks: string[]) => void;
 }
 
-export function Step3Priorities({ priorities, rooms, deepCleanTasks, onUpdate }: Step3Props) {
+export function Step3Priorities({ priorities, rooms, deepCleanTasks, setupFor, onUpdate }: Step3Props) {
+  const isOwn = setupFor !== "family";
   const [selected, setSelected] = useState<Priority[]>(priorities);
   const [localDeepClean, setLocalDeepClean] = useState<string[]>(deepCleanTasks);
   const [deepCleanOpen, setDeepCleanOpen] = useState(deepCleanTasks.length > 0);
@@ -112,7 +114,7 @@ export function Step3Priorities({ priorities, rooms, deepCleanTasks, onUpdate }:
           What matters most to you?
         </h2>
         <p className="text-text-secondary text-sm max-w-md">
-          Pick up to 3 priorities. This helps us focus your helper&apos;s schedule on what&apos;s most important to your family.
+          Pick up to 3 priorities. This helps us focus {isOwn ? "your helper's" : "the helper's"} schedule on what matters most {isOwn ? "to your family" : "in the home"}.
         </p>
       </div>
 
@@ -228,11 +230,11 @@ export function Step3Priorities({ priorities, rooms, deepCleanTasks, onUpdate }:
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-gray-900">{s.label}</p>
                     </div>
-                    <span className="text-[10px] text-gray-400 flex-shrink-0">{s.frequency}</span>
+                    <span className="text-xs text-gray-400 flex-shrink-0">{s.frequency}</span>
                   </button>
                 );
               })}
-              <p className="text-[10px] text-gray-400 pt-1">
+              <p className="text-xs text-gray-400 pt-1">
                 Frequencies can be adjusted anytime in your timetable
               </p>
             </div>

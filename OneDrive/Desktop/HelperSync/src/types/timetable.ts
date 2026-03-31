@@ -64,6 +64,7 @@ export interface TaskItem {
   requiresPhoto: boolean;
   emoji?: string;
   notes?: string;
+  passive?: boolean; // true = runs unattended (wash cycle, oven, soaking) — can overlap with active tasks
 }
 
 export interface DayTasks {

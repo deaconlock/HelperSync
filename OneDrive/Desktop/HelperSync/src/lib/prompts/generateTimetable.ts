@@ -1,4 +1,5 @@
 interface TimetableContext {
+  homeName?: string;
   rooms: string[];
   members: Array<{
     name: string;
@@ -11,9 +12,8 @@ interface TimetableContext {
     napSchedule?: string;
   }>;
   helperDetails: { name: string; nationality: string; language: string };
-  // New per-member data
   memberRoutines?: Record<string, string>;
-  memberSchedules?: Record<string, Record<string, Array<{ start: string; end: string; label?: string }>>>;
+  memberQuietHours?: Record<string, string>;
   // Legacy fields (backward compat)
   employerAvailability?: Record<string, Array<{ start: string; end: string; label?: string }>>;
   wifeAvailability?: Record<string, Array<{ start: string; end: string; label?: string }>>;
@@ -23,6 +23,7 @@ interface TimetableContext {
   helperPace?: string;
   homeSize?: string;
   deepCleanTasks?: string[];
+  daysToGenerate?: string[];
   refineFeedback?: string;
   currentSchedule?: Array<{ day: string; tasks: Array<{ taskName: string; time: string; category: string; area: string }> }>;
 }
@@ -38,15 +39,15 @@ const PRIORITY_LABELS: Record<string, string> = {
 };
 
 const EXPERIENCE_GUIDANCE: Record<string, string> = {
-  new: "The helper is BRAND NEW (first job). Use detailed, step-by-step task names so she knows exactly what to do. For example, instead of 'Clean kitchen' use 'Wipe kitchen counters & stovetop'. Include more tasks broken into smaller steps.",
-  some: "The helper has 1-2 years of experience. Use clear but not overly detailed task names. She knows the basics but may need guidance on specific household preferences.",
-  experienced: "The helper is VERY EXPERIENCED (3+ years). Use concise task names — she knows how to get things done. Focus on timing and priorities rather than step-by-step instructions.",
+  new: "BRAND NEW helper (first job). Use very detailed task names so she knows exactly what to do — e.g. 'Wipe kitchen counters & stovetop' not 'Clean kitchen'. Break tasks into small steps.",
+  some: "Helper has 1–2 years experience. Use clear task names. She knows the basics but benefits from specific preferences being named.",
+  experienced: "VERY EXPERIENCED helper (3+ years). Use concise task names. She knows how to work — focus on timing and priorities.",
 };
 
 const HOME_SIZE_GUIDANCE: Record<string, string> = {
-  compact: "This is a SMALL home (~700 sqft / 65 sqm). Adjust cleaning durations accordingly: quick tasks 10-15min, standard cleaning 20-25min, full room clean 30-40min. Vacuuming the whole home should take ~20min.",
-  midsize: "This is a MEDIUM home (~1,200 sqft / 110 sqm). Use standard durations: quick tasks 15min, standard cleaning 30min, full room clean 45-60min.",
-  spacious: "This is a LARGE home (1,500+ sqft / 140+ sqm). Cleaning takes longer: quick tasks 15-20min, standard cleaning 35-45min, full room clean 60-90min. Vacuuming the whole home may take 45-60min.",
+  compact: "Small home (~65 sqm). Quick tasks: 10–15 min. Standard cleaning: 20–25 min. Full room: 30 min. Whole-home vacuum: ~20 min.",
+  midsize: "Medium home (~110 sqm). Quick tasks: 15 min. Standard cleaning: 30 min. Full room: 45–60 min. Whole-home vacuum: ~35 min.",
+  spacious: "Large home (~140+ sqm). Quick tasks: 15–20 min. Standard cleaning: 35–45 min. Full room: 60–90 min. Whole-home vacuum: 45–60 min.",
 };
 
 const DEEP_CLEAN_LABELS: Record<string, string> = {
@@ -62,180 +63,241 @@ const DEEP_CLEAN_LABELS: Record<string, string> = {
   sofa: "Sofa/upholstery vacuuming (every 3 months)",
 };
 
-const PACE_CONFIG: Record<string, { window: string; breaks: string; tasksPerDay: string; restNote: string }> = {
+const PACE_CONFIG: Record<string, {
+  window: string;
+  workStart: string;
+  workEnd: string;
+  breaks: string;
+  realTasksPerDay: string;
+  totalEntriesPerDay: string;
+  restNote: string;
+}> = {
   relaxed: {
-    window: "8:00 AM to 6:00 PM",
-    breaks: "Include a 1-hour lunch break (12:00–1:00 PM) AND two 20-minute rest breaks (one mid-morning around 10:15, one mid-afternoon around 3:00). No tasks during breaks.",
-    tasksPerDay: "6-8",
-    restNote: "This employer prefers a lighter schedule. Space tasks generously — leave 10-15 min gaps between tasks for the helper to transition and rest. Prioritize quality over quantity.",
+    window: "8:00 AM – 6:00 PM",
+    workStart: "08:00",
+    workEnd: "18:00",
+    breaks: "1-hour lunch (12:00–13:00) + one 20-min morning break (~10:15)",
+    realTasksPerDay: "4–5",
+    totalEntriesPerDay: "6",
+    restNote: "Lighter schedule — space tasks with 10–15 min gaps. Quality over quantity.",
   },
   balanced: {
-    window: "7:00 AM to 7:00 PM",
-    breaks: "Include a 1-hour lunch break (12:00–1:00 PM) AND two 15-minute rest breaks (one mid-morning around 10:15, one mid-afternoon around 3:00). No tasks during breaks.",
-    tasksPerDay: "8-10",
-    restNote: "Aim for a steady, sustainable pace. Leave short gaps between tasks where possible.",
+    window: "7:00 AM – 7:00 PM",
+    workStart: "07:00",
+    workEnd: "19:00",
+    breaks: "1-hour lunch (12:00–13:00) + one 15-min afternoon break (~15:00)",
+    realTasksPerDay: "5–6",
+    totalEntriesPerDay: "7–8",
+    restNote: "Steady, sustainable pace. Short gaps between tasks where possible.",
   },
   intensive: {
-    window: "7:00 AM to 8:00 PM",
-    breaks: "Include a 1-hour lunch break (12:00–1:00 PM) AND one 15-minute afternoon break around 3:00 PM. No tasks during breaks.",
-    tasksPerDay: "10-12",
-    restNote: "This is a packed schedule. Ensure the break times are strictly protected — no tasks should overlap with rest periods.",
+    window: "7:00 AM – 8:00 PM",
+    workStart: "07:00",
+    workEnd: "20:00",
+    breaks: "1-hour lunch (12:00–13:00) + one 15-min afternoon break (~15:00)",
+    realTasksPerDay: "7–8",
+    totalEntriesPerDay: "9–10",
+    restNote: "Packed schedule. Protect break times strictly — no task overlap with rests.",
   },
 };
 
-export function buildGenerateTimetablePrompt(ctx: TimetableContext): string {
-  const priorityList = ctx.priorities.length > 0
-    ? ctx.priorities.map((p) => PRIORITY_LABELS[p] ?? p).join(", ")
-    : "General household management";
+// Week variation themes — gives each day a distinct focus
+const WEEK_THEMES = [
+  { day: "monday",    focus: "Deep clean living areas + laundry" },
+  { day: "tuesday",   focus: "Bedrooms + ironing + organising" },
+  { day: "wednesday", focus: "Kitchen deep clean + grocery/errands" },
+  { day: "thursday",  focus: "Bathrooms + windows + light tidying" },
+  { day: "friday",    focus: "Full vacuum + mop + prep for weekend" },
+  { day: "saturday",  focus: "Lighter chores + special family meal prep" },
+  { day: "sunday",    focus: "Rest-day light duties + weekly reset" },
+];
 
-  const experienceNote = EXPERIENCE_GUIDANCE[ctx.helperExperience] ?? EXPERIENCE_GUIDANCE.some;
+export function buildGenerateTimetablePrompt(ctx: TimetableContext): { prompt: string; isSeg1: boolean } {
   const pace = PACE_CONFIG[ctx.helperPace ?? "balanced"];
-  const sizeNote = HOME_SIZE_GUIDANCE[ctx.homeSize ?? "midsize"];
+  const priorityList = ctx.priorities.length > 0
+    ? ctx.priorities.map((p) => `"${PRIORITY_LABELS[p] ?? p}"`).join(", ")
+    : '"General household management"';
+  const roomList = ctx.rooms.join(", ");
 
-  // Build deep clean section
-  let deepCleanSection = "";
-  if (ctx.deepCleanTasks && ctx.deepCleanTasks.length > 0) {
-    const taskList = ctx.deepCleanTasks
-      .map((id) => DEEP_CLEAN_LABELS[id])
-      .filter(Boolean)
-      .join("\n- ");
-    deepCleanSection = `\nPERIODIC DEEP CLEANING TASKS:
-The employer has selected these periodic deep-clean tasks. Distribute 1-2 of these across the week as bonus tasks, rotating through them. Label their category as "Household Chores". Add a note in the task name indicating frequency (e.g. "Deep clean: kitchen hood [monthly]").
-- ${taskList}`;
+  // Filter to only the requested days (segment mode), or all 7
+  const activeThemes = ctx.daysToGenerate
+    ? WEEK_THEMES.filter((t) => ctx.daysToGenerate!.includes(t.day))
+    : WEEK_THEMES;
+
+  // ── Member constraints section ──
+  const memberLines: string[] = [];
+  const hasRoutines = ctx.memberRoutines && Object.values(ctx.memberRoutines).some((v) => v?.trim());
+
+  if (hasRoutines) {
+    ctx.members.forEach((m, i) => {
+      const key = `member-${i}`;
+      const routine = ctx.memberRoutines?.[key]?.trim() ?? "";
+      const quietHours = ctx.memberQuietHours?.[key]?.trim() ?? "";
+      if (!routine && !quietHours) return;
+      const ageStr = m.age !== undefined ? `, age ${m.age}` : "";
+      const label = `${m.name || m.role} (${m.role}${ageStr})`;
+      const constraints: string[] = [];
+      if (routine) {
+        routine.split("\n").filter((l) => l.trim()).forEach((l) => constraints.push(l.trim()));
+      }
+      if (quietHours) {
+        constraints.push(`QUIET HOURS ${quietHours}: no vacuuming, mopping, blender, or washing machine`);
+      }
+      if (constraints.length > 0) {
+        memberLines.push(`${label}:\n${constraints.map((c) => `  • ${c}`).join("\n")}`);
+      }
+    });
+  } else if (ctx.routines) {
+    memberLines.push(ctx.routines);
   }
 
-  // Build per-member schedules & routines section
-  let memberSection = "";
-  if (ctx.memberSchedules || ctx.memberRoutines) {
-    const lines: string[] = [];
-    // Employer
-    const empSchedule = ctx.memberSchedules?.["employer"] ?? ctx.employerAvailability;
-    const empRoutine = ctx.memberRoutines?.["employer"] ?? ctx.routines ?? "";
-    lines.push(`You (Employer)${empSchedule ? `\n  Away schedule: ${JSON.stringify(empSchedule)}` : ""}${empRoutine ? `\n  Routines: "${empRoutine}"` : ""}`);
-
-    // Other members
-    if (ctx.memberSchedules || ctx.memberRoutines) {
-      ctx.members.forEach((m, i) => {
-        const key = `member-${i}`;
-        const schedule = ctx.memberSchedules?.[key];
-        const routine = ctx.memberRoutines?.[key] ?? "";
-        const ageStr = m.age ? `, ${m.age} years old` : "";
-        lines.push(`${m.name} (${m.role}${ageStr})${schedule ? `\n  Away schedule: ${JSON.stringify(schedule)}` : ""}${routine ? `\n  Routines: "${routine}"` : ""}`);
-      });
-    }
-    memberSection = `\nMEMBER SCHEDULES & ROUTINES:\n${lines.join("\n\n")}\n\nYou MUST respect these routines when scheduling. For example, if someone says "no vacuuming during nap time", do not schedule vacuuming during that window. If they say "dinner ready by 7pm", schedule dinner prep to finish by 6:45pm.`;
-  } else {
-    // Legacy fallback
-    const routinesText = ctx.routines
-      ? `\nSPECIFIC ROUTINES & PREFERENCES:\n${ctx.routines}\n\nYou MUST respect these routines when scheduling.`
-      : "";
-    memberSection = `
-EMPLOYER AWAY SCHEDULE (times when employer is not home):
-${JSON.stringify(ctx.employerAvailability ?? {}, null, 2)}
-
-WIFE/PARTNER AWAY SCHEDULE:
-${JSON.stringify(ctx.wifeAvailability ?? {}, null, 2)}
-${routinesText}`;
-  }
-
-  // Build elderly care details section
-  const elderlyMembers = ctx.members.filter(m => m.role === "Elderly");
+  // ── Elderly care section ──
+  const elderlyMembers = ctx.members.filter((m) => m.role === "Elderly");
   let elderlySection = "";
   if (elderlyMembers.length > 0) {
-    elderlySection = `\nELDERLY CARE DETAILS:\n${elderlyMembers.map(m => {
-      const lines = [`${m.name} (${m.age ? m.age + ' years old' : 'age not specified'})`];
+    const details = elderlyMembers.map((m) => {
+      const lines = [`${m.name || "Elderly member"} (${m.age ? m.age + " yrs" : "age unknown"})`];
       if (m.mobilityLevel) lines.push(`  Mobility: ${m.mobilityLevel.replace(/_/g, " ")}`);
-      if (m.medicalConditions) lines.push(`  Medical conditions: ${m.medicalConditions}`);
+      if (m.medicalConditions) lines.push(`  Medical: ${m.medicalConditions}`);
       if (m.medications) lines.push(`  Medications: ${m.medications}`);
-      if (m.dietaryRestrictions) lines.push(`  Dietary restrictions: ${m.dietaryRestrictions}`);
-      if (m.napSchedule) lines.push(`  Nap schedule: ${m.napSchedule}`);
+      if (m.dietaryRestrictions) lines.push(`  Diet: ${m.dietaryRestrictions}`);
+      if (m.napSchedule) lines.push(`  Nap: ${m.napSchedule}`);
       return lines.join("\n");
-    }).join("\n\n")}`;
+    }).join("\n");
+    elderlySection = `\nELDERLY CARE DETAILS:\n${details}\n`;
   }
 
-  const elderlyRules = elderlyMembers.length > 0 ? `
-17. ELDERLY CARE RULES:
-  a. Medication tasks MUST be scheduled at the EXACT times specified by the employer. These are non-negotiable — never move or skip them.
-  b. If a nap schedule is specified, do NOT schedule noisy tasks (vacuuming, laundry machine, blender) during nap times.
-  c. Meal prep for elderly with dietary restrictions must account for their specific needs (separate prep if needed).
-  d. For members with limited mobility ("needs_assistance", "wheelchair", "bedridden"): schedule regular check-in tasks (every 2-3 hours), and include mobility exercises or assisted walks if they are not bedridden.
-  e. Do NOT stack multiple physically demanding tasks back-to-back when the helper also has elderly care duties — they need energy reserves for care tasks.
-  f. Schedule a dedicated "Elderly care check-in" task in the morning and evening at minimum.` : "";
+  // ── Deep clean tasks ──
+  let deepCleanSection = "";
+  if (ctx.deepCleanTasks && ctx.deepCleanTasks.length > 0) {
+    const taskList = ctx.deepCleanTasks.map((id) => DEEP_CLEAN_LABELS[id]).filter(Boolean);
+    deepCleanSection = `\nPERIODIC TASKS (add 1–2 across the week, rotate, category "Household Chores"):\n${taskList.map((t) => `  • ${t}`).join("\n")}\n`;
+  }
 
-  return `You are an expert household management consultant specialising in Singapore domestic helper schedules.
+  // ── Week themes ──
+  const weekThemes = activeThemes.map((t) => `  ${t.day}: ${t.focus}`).join("\n");
+  const daysClause = ctx.daysToGenerate
+    ? `Generate ONLY these days: ${ctx.daysToGenerate.join(", ")}. Output exactly ${activeThemes.length} day object${activeThemes.length !== 1 ? "s" : ""} in the array.`
+    : `Generate all 7 days.`;
 
-Create a realistic, practical 7-day weekly timetable for a domestic helper based on the household context below.
+  // ── Constraint translation examples ──
+  const constraintExamples = `
+Translate member constraints into real tasks. Examples:
+  "Dinner ready by 7pm"        → add "Prepare dinner" task ending at 19:00
+  "Breakfast ready by 7am"     → add "Prepare breakfast" starting at 06:30–06:45
+  "Out Mon–Fri, back by 6pm"   → schedule noisy tasks (vacuum, mop, washing) 9am–5pm on weekdays
+  "WFH on Wednesdays"          → NO noisy tasks Wednesday; light work only
+  "School pickup at 3pm"       → no task for helper at 15:00; prep snack before pickup
+  "Medication at 8am and 8pm"  → add medication task at exactly 08:00 and 20:00 every day
+  "Packed lunch daily"         → add "Pack school lunch" task morning
+  "Afternoon nap 1–3pm"        → QUIET ZONE 13:00–15:00; no vacuum, mopping, or loud tasks`;
 
-HOUSEHOLD CONTEXT:
-- Rooms/Areas: ${ctx.rooms.join(", ")}
-- Household Members: ${ctx.members.map((m) => `${m.name} (${m.role}${m.age ? `, ${m.age} years old` : ""})`).join(", ")}
-- Helper: ${ctx.helperDetails.name} from ${ctx.helperDetails.nationality}
-${elderlySection}
-HOME SIZE:
-${sizeNote}
+  const isSeg1 = ctx.daysToGenerate?.includes("monday") ?? true;
 
-EMPLOYER'S TOP PRIORITIES: ${priorityList}
-These are what the employer cares about MOST. Allocate more time and frequency to priority areas. For example, if "Meals & Cooking" is a priority, include detailed meal prep for all three meals, not just breakfast and dinner.
+  const outputFormat = isSeg1 ? `Return a JSON object with exactly two keys. No explanation. No markdown fences. Start directly with {
 
-HELPER EXPERIENCE LEVEL:
-${experienceNote}
-${memberSection}
-${deepCleanSection}
+{
+  "summary": "2–3 sentence warm paragraph explaining what you built and why. Reference the helper's name (${ctx.helperDetails.name}), the key priorities chosen, and specific scheduling decisions you made. Write in first person as if speaking directly to the employer. E.g. 'I built Maria's week around daily meals and childcare for Anna. Deep cleaning is split across Monday and Thursday to keep each day manageable. Grocery runs land on Wednesday when you told me you are usually out.'",
+  "schedule": [
+    {
+      "day": "monday",
+      "tasks": [
+        {"taskId":"mon-1","time":"07:00","duration":30,"taskName":"Prepare breakfast","area":"Kitchen","category":"Meal Prep","emoji":"🍳"},
+        {"taskId":"mon-2","time":"09:00","duration":60,"taskName":"Washing machine cycle","area":"Utility Room","category":"Household Chores","emoji":"🫧","passive":true},
+        {"taskId":"mon-3","time":"09:00","duration":20,"taskName":"Wipe kitchen counters","area":"Kitchen","category":"Household Chores","emoji":"🧽"}
+      ]
+    }
+  ]
+}` : `Return ONLY a valid JSON array. No explanation. No markdown fences. Start directly with [
 
-SCHEDULING RULES:
-1. Schedule tasks from ${pace.window}
-2. ${pace.breaks}
-3. ${pace.restNote}
-4. Baby/child care tasks must be scheduled appropriately for their age
-5. Tasks should cover all rooms over the course of the week
-6. Rotate cleaning tasks sensibly (not every room every day)
-7. Schedule noisy tasks (vacuuming, washing machine) when the family is OUT
-8. Schedule meals to be ready BEFORE the family arrives home
-9. Use these categories: "Household Chores", "Baby Care", "Elderly Care", "Meal Prep", "Errands", "Break"
-14. Use category "Break" for lunch breaks and rest breaks. Break tasks should have names like "Lunch break", "Afternoon rest". These MUST appear in the schedule as real tasks with proper time and duration
-10. Mark tasks as requiresPhoto: true if they involve high-value items, elderly care, or baby care
-11. Set recurring: true for daily tasks, false for weekly/periodic tasks
-12. Choose appropriate emojis for each task
-13. Tasks related to the employer's TOP PRIORITIES should appear more frequently and with more detail
-15. CRITICAL: Spread tasks EVENLY across the ENTIRE work window (morning, midday, and afternoon). Do NOT cluster all tasks in the morning. There should be tasks scheduled after lunch and into the late afternoon. Leave natural gaps (15-30 min) between tasks — the helper is not a machine. Not every time slot needs to be filled.
-16. A realistic daily flow should look like: morning chores → mid-morning break → cooking/prep → lunch break → afternoon tasks → afternoon break → evening prep. Distribute accordingly.${elderlyRules}
-
-Return ONLY a JSON array with this exact structure (no explanation, no markdown):
 [
   {
-    "day": "monday",
+    "day": "thursday",
     "tasks": [
-      {
-        "taskId": "unique-id-here",
-        "time": "07:00",
-        "duration": 30,
-        "taskName": "Prepare breakfast",
-        "area": "Kitchen",
-        "category": "Meal Prep",
-        "recurring": true,
-        "requiresPhoto": false,
-        "emoji": "🍳"
-      }
+      {"taskId":"thu-1","time":"07:00","duration":30,"taskName":"Prepare breakfast","area":"Kitchen","category":"Meal Prep","emoji":"🍳"}
     ]
   }
-]
+]`;
 
-DURATION GUIDELINES (in minutes):
-- Quick tasks (wiping, tidying): 15
-- Standard tasks (mopping, laundry load, meal prep): 30
-- Medium tasks (cooking a full meal, ironing, deep clean one room): 45-60
-- Long tasks (weekly deep clean, grocery shopping): 90-120
-- Tasks can overlap if they happen simultaneously (e.g. "Monitor washing machine" while doing other tasks)
+  const prompt = `You are a Singapore household scheduling expert. Generate a practical 7-day domestic helper timetable.
 
-Days must be: monday, tuesday, wednesday, thursday, friday, saturday, sunday
-Generate ${pace.tasksPerDay} entries per day (this count INCLUDES break entries). Make it realistic. Keep task names short (under 30 characters).${ctx.refineFeedback && ctx.currentSchedule ? `
+═══════════════════════════════
+HOUSEHOLD
+═══════════════════════════════
+${ctx.homeName ? `Home name: ${ctx.homeName}\n` : ""}Rooms: ${roomList}
+Members: ${ctx.members.map((m) => `${m.name || m.role} (${m.role}${m.age !== undefined ? `, ${m.age}yrs` : ""})`).join(" | ")}
+Helper: ${ctx.helperDetails.name} from ${ctx.helperDetails.nationality}
+${elderlySection}
+═══════════════════════════════
+HOME SIZE
+═══════════════════════════════
+${HOME_SIZE_GUIDANCE[ctx.homeSize ?? "midsize"]}
 
-USER FEEDBACK ON CURRENT PROPOSAL:
-The user reviewed the schedule you previously generated and wants these changes:
+═══════════════════════════════
+PRIORITIES (allocate most time here)
+═══════════════════════════════
+${priorityList}
+Priority tasks must appear EVERY DAY with specific detail. If "Meals & Cooking" is a priority → include breakfast prep, lunch prep, AND dinner prep daily with exact times. If "Cleanliness" → daily vacuum/mop rotation across rooms.
+
+═══════════════════════════════
+HELPER
+═══════════════════════════════
+Experience: ${EXPERIENCE_GUIDANCE[ctx.helperExperience] ?? EXPERIENCE_GUIDANCE.some}
+Work window: ${pace.window}
+Breaks: ${pace.breaks}
+${pace.restNote}
+
+═══════════════════════════════
+MEMBER ROUTINES & HARD CONSTRAINTS
+═══════════════════════════════
+${memberLines.length > 0 ? memberLines.join("\n\n") : "No specific constraints provided."}
+${constraintExamples}
+${deepCleanSection}
+═══════════════════════════════
+WEEK VARIATION (each day has a different focus)
+═══════════════════════════════
+${weekThemes}
+Daily chores (breakfast, tidy, dinner prep) repeat every day. The FOCUS task changes.
+
+═══════════════════════════════
+TASK RULES
+═══════════════════════════════
+1. Use EXACT room names from the list: ${roomList}
+2. Work window: ${pace.workStart}–${pace.workEnd}. No tasks outside this window.
+3. Breaks are MANDATORY and must appear as tasks (category "Break").
+4. Generate EXACTLY ${pace.totalEntriesPerDay} tasks per day total (work tasks + breaks combined). IMPORTANT: stay within this limit — the output must fit within a strict token budget.
+5. Spread tasks across the FULL day: morning, midday, AND afternoon/evening. Do NOT cluster tasks only in the morning.
+6. Noisy tasks (vacuum, mop, washing machine, blender) only when family is OUT. Check member constraints.
+7. Meal tasks: use specific times derived from member constraints. Default: breakfast 07:00, lunch 11:30, dinner 17:30.
+8. Categories: "Household Chores", "Meal Prep", "Baby Care", "Elderly Care", "Errands", "Break"
+9. Days must differ — do NOT copy Monday across all 7 days. Use the week variation themes above. Each day's FOCUS task must be different.
+10. PASSIVE TASKS: Some tasks run unattended — mark these passive:true. Examples:
+    • Washing machine cycle (30–90 min): start it, then do other tasks while it runs — schedule other tasks at the same time
+    • Oven cooking / slow cooker (30–120 min): set it, then clean or prep while it cooks
+    • Soaking dishes / laundry pre-soak: mark passive, can overlap with tidying tasks
+    • DO NOT mark passive: vacuuming, mopping, ironing, childcare, elderly care (require helper presence)
+    • Passive tasks DO count toward the daily task total.
+${elderlyMembers.length > 0 ? `11. ELDERLY RULES: medication at EXACT times specified. Quiet during naps. Check-in tasks morning AND evening. For limited mobility: check-in every 2–3 hours. No back-to-back physical tasks when helper has care duties.` : ""}
+
+═══════════════════════════════
+OUTPUT FORMAT
+═══════════════════════════════
+${outputFormat}
+
+${daysClause}
+Compact format — one task per line. Duration guide: quick tidy=15, standard clean=30, full room=45, cooking=30–45, grocery=60.
+Task names: under 30 characters. Specific ("Vacuum living room" not "Clean room").
+taskId format: first 3 letters of day + sequence number (e.g. mon-1, tue-2).
+${ctx.refineFeedback && ctx.currentSchedule ? `
+═══════════════════════════════
+USER FEEDBACK — APPLY THESE CHANGES
+═══════════════════════════════
 "${ctx.refineFeedback}"
 
-Current schedule for reference:
-${ctx.currentSchedule.map((d) => `${d.day}: ${d.tasks.map((t) => `${t.time} ${t.taskName} (${t.category}, ${t.area})`).join("; ")}`).join("\n")}
+Current schedule:
+${ctx.currentSchedule.map((d) => `${d.day}: ${d.tasks.map((t) => `${t.time} ${t.taskName} (${t.area})`).join("; ")}`).join("\n")}
 
-IMPORTANT: Incorporate the user's feedback while keeping the parts of the schedule they didn't mention. Only change what they asked for.` : ""}`;
+Keep everything not mentioned in the feedback unchanged.` : ""}`;
+
+  return { prompt, isSeg1 };
 }

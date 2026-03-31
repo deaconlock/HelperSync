@@ -36,8 +36,10 @@ function formatTimeLabel(hour: number): string {
 }
 
 // Detect overlapping groups for side-by-side rendering
+// Passive tasks (runs unattended) are excluded from column-splitting — they always render full-width
 function getOverlapGroups(tasks: TaskItem[]): Map<string, { column: number; totalColumns: number }> {
-  const sorted = [...tasks].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+  const activeTasks = tasks.filter((t) => !t.passive);
+  const sorted = [...activeTasks].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
   const result = new Map<string, { column: number; totalColumns: number }>();
   const groups: TaskItem[][] = [];
 
@@ -70,6 +72,11 @@ function getOverlapGroups(tasks: TaskItem[]): Map<string, { column: number; tota
       result.set(task.taskId, { column: col, totalColumns });
     });
   }
+
+  // Passive tasks are always full-width (column 0 of 1)
+  tasks.filter((t) => t.passive).forEach((t) => {
+    result.set(t.taskId, { column: 0, totalColumns: 1 });
+  });
 
   return result;
 }
@@ -254,22 +261,27 @@ export function DayTimelineView({
             const textClass = categoryColor.split(" ").find((c) => c.startsWith("text-")) ?? "text-gray-700";
             const borderClass = categoryColor.split(" ").find((c) => c.startsWith("border-")) ?? "border-gray-200";
 
+            const isPassive = task.passive === true;
+
             return (
               <div
                 key={task.taskId}
                 className={cn(
-                  "absolute group rounded-lg border transition-shadow cursor-grab active:cursor-grabbing",
+                  "absolute group rounded-lg border transition-shadow",
                   bgClass,
-                  borderClass,
-                  isDragging ? "shadow-card-hover z-30 opacity-90 ring-2 ring-gray-900/20" : "hover:shadow-card z-10"
+                  isPassive ? "border-dashed opacity-70 cursor-default z-0" : cn(borderClass, "cursor-grab active:cursor-grabbing"),
+                  !isPassive && (isDragging ? "shadow-card-hover z-30 opacity-90 ring-2 ring-gray-900/20" : "hover:shadow-card z-10")
                 )}
                 style={{
                   top,
                   height,
                   left: `calc(3.5rem + (100% - 3.5rem - 0.5rem) * ${leftPercent / 100})`,
                   width: `calc((100% - 3.5rem - 0.5rem) * ${columnWidth / 100})`,
+                  ...(isPassive ? {
+                    backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.04) 5px, rgba(0,0,0,0.04) 10px)",
+                  } : {}),
                 }}
-                onPointerDown={(e) => handlePointerDown(e, task, "move")}
+                onPointerDown={isPassive ? undefined : (e) => handlePointerDown(e, task, "move")}
               >
                 <div className="px-2 py-1 h-full flex flex-col overflow-hidden">
                   <div className="flex items-start gap-1 flex-1 min-h-0">
@@ -288,6 +300,10 @@ export function DayTimelineView({
                       )}
                     </div>
                   </div>
+                  {/* "running" badge for passive tasks */}
+                  {isPassive && height >= 28 && (
+                    <p className="text-[9px] text-gray-400 self-end leading-none mt-auto">⟳ running</p>
+                  )}
                 </div>
 
                 {/* Action buttons on hover */}
@@ -308,13 +324,15 @@ export function DayTimelineView({
                   </button>
                 </div>
 
-                {/* Resize handle at the bottom */}
+                {/* Resize handle — only for active tasks */}
+                {!isPassive && (
                 <div
                   className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                   onPointerDown={(e) => { e.stopPropagation(); handlePointerDown(e, task, "resize"); }}
                 >
                   <div className="w-8 h-1 bg-gray-300 rounded-full" />
                 </div>
+                )}
               </div>
             );
           })}
