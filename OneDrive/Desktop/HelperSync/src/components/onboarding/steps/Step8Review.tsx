@@ -6,6 +6,27 @@ import { Sparkles, CheckCircle2, AlertCircle, Loader2, ArrowRight } from "lucide
 import { WizardData } from "@/app/onboarding/employer/page";
 import { DayTasks, DAYS_OF_WEEK, DAY_LABELS } from "@/types/timetable";
 
+const PRIORITY_LABELS: Record<string, string> = {
+  meals: "Meals & Cooking",
+  cleanliness: "Cleanliness & Tidying",
+  childcare: "Childcare",
+  elderlycare: "Elderly Care",
+  laundry: "Laundry & Ironing",
+  grocery: "Grocery Shopping & Errands",
+  organizing: "Organizing & Decluttering",
+};
+
+function buildClientSummary(data: WizardData): string {
+  const helperName = data.helperDetails?.name || "Your helper";
+  const priorities = data.priorities.slice(0, 2).map((p) => PRIORITY_LABELS[p] ?? p);
+  const priorityStr = priorities.length > 0 ? priorities.join(" and ") : "general household management";
+  const childCount = data.members.filter((m) => ["Baby", "Young Child", "School Child"].includes(m.role)).length;
+  const elderlyCount = data.members.filter((m) => m.role === "Elderly").length;
+  const careNote = childCount > 0 ? " with childcare routines built in" : elderlyCount > 0 ? " with elderly care checkpoints" : "";
+  const paceNote = data.helperPace === "intensive" ? "a packed, full-day schedule" : data.helperPace === "relaxed" ? "a relaxed, quality-focused schedule" : "a steady, balanced schedule";
+  return `I built ${helperName}'s week around ${priorityStr}${careNote}. Each day has a different focus to avoid repetition, and I've spread tasks across the full day with proper breaks. This is ${paceNote} tailored to your home.`;
+}
+
 // Labels that cycle during the passive progress animation
 const PROGRESS_LABELS = [
   "Analyzing your home layout...",
@@ -86,7 +107,6 @@ interface Step8Props {
   preGenError: boolean;
   onTimetableGenerated: (tasks: DayTasks[]) => void;
   onRetry: () => void;
-  summary: string | null;
 }
 
 export function Step8Review({
@@ -95,7 +115,6 @@ export function Step8Review({
   preGenError,
   onTimetableGenerated,
   onRetry,
-  summary,
 }: Step8Props) {
   const [hasGenerated, setHasGenerated] = useState(data.weeklyTasks !== null);
   const [progressPercent, setProgressPercent] = useState(0);
@@ -244,19 +263,17 @@ export function Step8Review({
             </motion.div>
 
             {/* AI summary card */}
-            {summary && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-2"
-              >
-                <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">
-                  Here&apos;s what I built
-                </p>
-                <p className="text-sm text-white/75 leading-relaxed italic">{summary}</p>
-              </motion.div>
-            )}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-2"
+            >
+              <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">
+                Here&apos;s what I built
+              </p>
+              <p className="text-sm text-white/75 leading-relaxed italic">{buildClientSummary(data)}</p>
+            </motion.div>
 
             {/* Week at a glance */}
             {data.weeklyTasks && (

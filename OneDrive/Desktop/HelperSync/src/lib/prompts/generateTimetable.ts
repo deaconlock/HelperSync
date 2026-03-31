@@ -112,7 +112,7 @@ const WEEK_THEMES = [
   { day: "sunday",    focus: "Rest-day light duties + weekly reset" },
 ];
 
-export function buildGenerateTimetablePrompt(ctx: TimetableContext): { prompt: string; isSeg1: boolean } {
+export function buildGenerateTimetablePrompt(ctx: TimetableContext): { prompt: string } {
   const pace = PACE_CONFIG[ctx.helperPace ?? "balanced"];
   const priorityList = ctx.priorities.length > 0
     ? ctx.priorities.map((p) => `"${PRIORITY_LABELS[p] ?? p}"`).join(", ")
@@ -192,29 +192,15 @@ Translate member constraints into real tasks. Examples:
   "Packed lunch daily"         → add "Pack school lunch" task morning
   "Afternoon nap 1–3pm"        → QUIET ZONE 13:00–15:00; no vacuum, mopping, or loud tasks`;
 
-  const isSeg1 = ctx.daysToGenerate?.includes("monday") ?? true;
-
-  const outputFormat = isSeg1 ? `Return a JSON object with exactly two keys. No explanation. No markdown fences. Start directly with {
-
-{
-  "summary": "2–3 sentence warm paragraph explaining what you built and why. Reference the helper's name (${ctx.helperDetails.name}), the key priorities chosen, and specific scheduling decisions you made. Write in first person as if speaking directly to the employer. E.g. 'I built Maria's week around daily meals and childcare for Anna. Deep cleaning is split across Monday and Thursday to keep each day manageable. Grocery runs land on Wednesday when you told me you are usually out.'",
-  "schedule": [
-    {
-      "day": "monday",
-      "tasks": [
-        {"taskId":"mon-1","time":"07:00","duration":30,"taskName":"Prepare breakfast","area":"Kitchen","category":"Meal Prep","emoji":"🍳"},
-        {"taskId":"mon-2","time":"09:00","duration":60,"taskName":"Washing machine cycle","area":"Utility Room","category":"Household Chores","emoji":"🫧","passive":true},
-        {"taskId":"mon-3","time":"09:00","duration":20,"taskName":"Wipe kitchen counters","area":"Kitchen","category":"Household Chores","emoji":"🧽"}
-      ]
-    }
-  ]
-}` : `Return ONLY a valid JSON array. No explanation. No markdown fences. Start directly with [
+  const outputFormat = `Return ONLY a valid JSON array. No explanation. No markdown fences. Start directly with [
 
 [
   {
-    "day": "thursday",
+    "day": "monday",
     "tasks": [
-      {"taskId":"thu-1","time":"07:00","duration":30,"taskName":"Prepare breakfast","area":"Kitchen","category":"Meal Prep","emoji":"🍳"}
+      {"taskId":"mon-1","time":"07:00","duration":30,"taskName":"Prepare breakfast","area":"Kitchen","category":"Meal Prep","emoji":"🍳"},
+      {"taskId":"mon-2","time":"09:00","duration":60,"taskName":"Washing machine cycle","area":"Utility Room","category":"Household Chores","emoji":"🫧","passive":true},
+      {"taskId":"mon-3","time":"09:00","duration":20,"taskName":"Wipe kitchen counters","area":"Kitchen","category":"Household Chores","emoji":"🧽"}
     ]
   }
 ]`;
@@ -304,5 +290,5 @@ ${ctx.currentSchedule.map((d) => `${d.day}: ${d.tasks.map((t) => `${t.time} ${t.
 
 Keep everything not mentioned in the feedback unchanged.` : ""}`;
 
-  return { prompt, isSeg1 };
+  return { prompt };
 }

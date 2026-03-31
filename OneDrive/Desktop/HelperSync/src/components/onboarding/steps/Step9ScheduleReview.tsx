@@ -248,48 +248,71 @@ function buildDaySlides(
         </div>
       );
     } else {
-      const highlights = dayData.tasks
-        .filter((t) => t.category !== "Break")
-        .slice(0, 5);
+      // Special tasks: passive (washing machine, oven), deep-clean, non-daily care, errands
+      const specialTasks = dayData.tasks.filter((t) =>
+        t.category !== "Break" && (
+          t.passive ||
+          t.category === "Errands" ||
+          t.category === "Elderly Care" ||
+          t.category === "Baby Care" ||
+          // One-off or infrequent names (contains "deep", "clean", "iron", "grocery", "scrub", "degrease", "shampoo", "wash curtain", "aircon")
+          /deep|iron|grocery|scrub|degrease|shampoo|curtain|aircon|mattress|fridge|ceiling fan|sofa/i.test(t.taskName)
+        )
+      ).slice(0, 4);
 
-      const categoryCounts = dayData.tasks.reduce<Record<string, number>>((acc, t) => {
-        if (t.category !== "Break") acc[t.category] = (acc[t.category] ?? 0) + 1;
-        return acc;
-      }, {});
+      // Category summary: unique categories present (excluding Break)
+      const categories = [...new Set(
+        dayData.tasks.filter((t) => t.category !== "Break").map((t) => t.category)
+      )];
+
+      const totalWork = dayData.tasks.filter((t) => t.category !== "Break").length;
 
       content = (
-        <div className="space-y-4 text-white">
-          <StaggerChild delay={0.1}>
-            <div className="space-y-2.5">
-              {highlights.map((task) => (
-                <div key={task.taskId} className="flex items-center gap-3">
-                  <span className="text-lg flex-shrink-0">
-                    {task.emoji ?? CATEGORY_EMOJIS[task.category] ?? "✅"}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white/90 truncate">{task.taskName}</p>
-                    <p className="text-xs text-white/40">{task.time} · {task.area}</p>
-                  </div>
-                </div>
-              ))}
-              {dayData.tasks.filter((t) => t.category !== "Break").length > 5 && (
-                <p className="text-xs text-white/30 text-center">
-                  +{dayData.tasks.filter((t) => t.category !== "Break").length - 5} more tasks
-                </p>
-              )}
+        <div className="space-y-5 text-white">
+          {/* Focus theme */}
+          <StaggerChild delay={0.05}>
+            <div className="rounded-xl bg-white/10 border border-white/15 px-4 py-3">
+              <p className="text-[10px] text-white/40 uppercase tracking-wider font-medium mb-1">Focus</p>
+              <p className="text-sm font-semibold text-white/90">{theme}</p>
             </div>
           </StaggerChild>
 
+          {/* Special / notable tasks */}
+          {specialTasks.length > 0 && (
+            <StaggerChild delay={0.2}>
+              <div>
+                <p className="text-[10px] text-white/40 uppercase tracking-wider font-medium mb-2">Notable tasks</p>
+                <div className="space-y-2">
+                  {specialTasks.map((task) => (
+                    <div key={task.taskId} className="flex items-center gap-3">
+                      <span className="text-base flex-shrink-0">
+                        {task.emoji ?? CATEGORY_EMOJIS[task.category] ?? "✅"}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-white/90 truncate">{task.taskName}</p>
+                        <p className="text-[11px] text-white/40">
+                          {task.time}{task.passive ? " · runs unattended" : ""}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </StaggerChild>
+          )}
+
+          {/* Category pills + task count */}
           <StaggerChild delay={0.35}>
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {Object.entries(categoryCounts).map(([cat, count]) => (
+            <div className="flex flex-wrap gap-1.5 items-center">
+              {categories.map((cat) => (
                 <span
                   key={cat}
                   className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/60"
                 >
-                  {CATEGORY_EMOJIS[cat] ?? "📋"} {count}
+                  {CATEGORY_EMOJIS[cat] ?? "📋"} {cat}
                 </span>
               ))}
+              <span className="text-[10px] text-white/30 ml-auto">{totalWork} tasks</span>
             </div>
           </StaggerChild>
         </div>
@@ -653,6 +676,7 @@ function ScheduleSlideshow({
   const [direction, setDirection] = useState(0);
   const totalSlides = slides.length + 1; // +1 for final "refine" slide
   const isLastSlide = currentIndex === totalSlides - 1;
+  const touchStartX = useRef<number | null>(null);
 
   // Reset to first slide when resetKey changes (after AI refine)
   useEffect(() => {
@@ -686,7 +710,19 @@ function ScheduleSlideshow({
   return (
     <div className="space-y-4">
       {/* Slide container */}
-      <div className="relative overflow-hidden rounded-2xl" style={{ minHeight: 420 }}>
+      <div
+        className="relative overflow-hidden rounded-2xl"
+        style={{ minHeight: 420 }}
+        onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+        onTouchEnd={(e) => {
+          if (touchStartX.current === null) return;
+          const delta = touchStartX.current - e.changedTouches[0].clientX;
+          touchStartX.current = null;
+          if (Math.abs(delta) < 40) return;
+          if (delta > 0) goTo(currentIndex + 1);
+          else goTo(currentIndex - 1);
+        }}
+      >
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={currentIndex}

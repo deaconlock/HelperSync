@@ -126,7 +126,6 @@ function EmployerOnboardingPage() {
   const [seg3Result, setSeg3Result] = useState<DayTasks[] | null>(null);
   const [seg1Error, setSeg1Error] = useState(false);
   const [seg23Error, setSeg23Error] = useState(false);
-  const [seg1Summary, setSeg1Summary] = useState<string | null>(null);
   const [completingRef] = useState({ called: false });
   const seg23TimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -204,7 +203,6 @@ function EmployerOnboardingPage() {
     days: string[],
     onResult: (tasks: DayTasks[]) => void,
     onError: () => void,
-    onSummary?: (s: string) => void,
   ) => {
     try {
       const res = await fetch("/api/ai/generate-timetable", {
@@ -235,26 +233,10 @@ function EmployerOnboardingPage() {
         accumulated += decoder.decode(value, { stream: true });
       }
 
-      // Segment 1 returns { summary, schedule: [...] }; Segments 2+3 return bare array
       const trimmed = accumulated.trim();
-      let rawTasks: DayTasks[] | null = null;
-      if (trimmed.startsWith("{")) {
-        try {
-          const objMatch = trimmed.match(/\{[\s\S]*\}/);
-          if (objMatch) {
-            const parsed = JSON.parse(objMatch[0]);
-            if (parsed.summary && Array.isArray(parsed.schedule)) {
-              onSummary?.(parsed.summary);
-              rawTasks = parsed.schedule;
-            }
-          }
-        } catch { /* fall through to array parse */ }
-      }
-      if (!rawTasks) {
-        const arrMatch = trimmed.match(/\[[\s\S]*\]/);
-        if (!arrMatch) { onError(); return; }
-        rawTasks = JSON.parse(arrMatch[0]);
-      }
+      const arrMatch = trimmed.match(/\[[\s\S]*\]/);
+      if (!arrMatch) { onError(); return; }
+      const rawTasks: DayTasks[] = JSON.parse(arrMatch[0]);
 
       const parsed = rawTasks;
       if (Array.isArray(parsed) && parsed[0]?.day && parsed[0]?.tasks) {
@@ -284,8 +266,7 @@ function EmployerOnboardingPage() {
       // Segment 1: Mon/Tue/Wed — fires while user reads portrait cards on step 7
       setSeg1Result(null);
       setSeg1Error(false);
-      setSeg1Summary(null);
-      triggerSegment(data, ["monday", "tuesday", "wednesday"], setSeg1Result, () => setSeg1Error(true), setSeg1Summary);
+      triggerSegment(data, ["monday", "tuesday", "wednesday"], setSeg1Result, () => setSeg1Error(true));
     }
     if (step === 7) {
       // Segments 2+3 fire simultaneously as user enters the schedule editor
@@ -512,7 +493,6 @@ function EmployerOnboardingPage() {
           data={data}
           preGenResult={seg1Result}
           preGenError={seg1Error}
-          summary={seg1Summary}
           onTimetableGenerated={(tasks) => {
             updateData({ weeklyTasks: tasks });
             setSeg1Result(null);
@@ -520,8 +500,7 @@ function EmployerOnboardingPage() {
           onRetry={() => {
             setSeg1Result(null);
             setSeg1Error(false);
-            setSeg1Summary(null);
-            triggerSegment(data, ["monday", "tuesday", "wednesday"], setSeg1Result, () => setSeg1Error(true), setSeg1Summary);
+            triggerSegment(data, ["monday", "tuesday", "wednesday"], setSeg1Result, () => setSeg1Error(true));
           }}
         />
       )}
