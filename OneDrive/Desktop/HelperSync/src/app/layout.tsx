@@ -24,6 +24,12 @@ export const metadata: Metadata = {
     "AI-powered household helper management for Singapore families. Coordinate tasks, schedules, and care routines seamlessly.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export default function RootLayout({
   children,
 }: {
