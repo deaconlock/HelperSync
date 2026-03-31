@@ -48,6 +48,82 @@ const NAP_TO_QUIET: Record<string, string> = {
   "Catnap at 4pm":        "4:00 PM – 5:00 PM",
 };
 
+// Mutually exclusive: selecting one auto-deselects the rest in the same group
+const CONFLICT_GROUPS: string[][] = [
+  ["Out Mon–Fri, back by 6pm", "Out Mon–Fri, back by 7pm", "Out Mon–Fri, back by 8pm"],
+  ["WFH on Wednesdays", "WFH full week"],
+  ["Breakfast ready by 7am", "Breakfast ready by 7:30am"],
+  ["Dinner ready by 6:30pm", "Dinner ready by 7pm", "Dinner ready by 7:30pm"],
+  ["Formula every 3 hours", "Formula every 4 hours", "Breastfeeding — prepare bottles"],
+  ["Morning nap 9–10am", "Morning nap 10–11am"],
+  ["Afternoon nap 12–2pm", "Afternoon nap 1–3pm", "Afternoon nap 2–4pm"],
+  ["Bedtime at 7pm", "Bedtime at 7:30pm", "Bedtime at 8pm"],
+  ["Bath at 6pm", "Bath at 7pm"],
+  ["School pickup at 1pm", "School pickup at 2pm", "School pickup at 3pm"],
+  ["Bedtime at 8:30pm", "Bedtime at 9pm"],
+  ["Morning walk at 7am", "Morning walk at 8am"],
+  ["Medication at 8am and 8pm", "Medication after every meal"],
+  ["Lunch ready by 12pm", "Lunch ready by 1pm"],
+  ["Dinner ready by 6pm", "Dinner ready by 6:30pm"],
+];
+
+// Soft incompatibility: when key chip is selected, listed chips become greyed-out (not deselected)
+const INCOMPATIBLE: Record<string, string[]> = {
+  "WFH full week": [
+    "Out Mon–Fri, back by 6pm", "Out Mon–Fri, back by 7pm", "Out Mon–Fri, back by 8pm",
+    "Clean rooms while I'm out",
+  ],
+  "Small meals, 4–5 times a day": [
+    "Lunch ready by 12pm", "Lunch ready by 1pm",
+    "Dinner ready by 6pm", "Dinner ready by 6:30pm",
+  ],
+};
+
+// Contextual suggestions surfaced from a helper's POV after a chip is selected
+const SUGGESTIONS: Record<string, string[]> = {
+  "Out Mon–Fri, back by 7pm":         ["Tidy common areas before owner returns"],
+  "Out Mon–Fri, back by 6pm":         ["Tidy common areas before owner returns"],
+  "Out Mon–Fri, back by 8pm":         ["Light dinner warming duty for late return"],
+  "Gym mornings — wash kit same day": ["Hang dry gym kit — do not tumble dry"],
+  "WFH on Wednesdays":                ["Quiet tasks on Wednesdays — no vacuum/blender"],
+  "WFH full week":                    ["Prepare mid-morning coffee or snack"],
+  "School pickup at 1pm":             ["Lunch ready by 1:30pm after pickup"],
+  "School pickup at 2pm":             ["After-school snack ready by 2:30pm"],
+  "School pickup at 3pm":             ["After-school snack ready by 3:30pm"],
+  "Homework help after school":       ["Clear dining table and prepare stationery"],
+  "Formula every 3 hours":            ["Sterilise bottles after each feed"],
+  "Solids 3× daily":                  ["Prepare fresh purée — no salt or sugar"],
+  "Morning nap 9–10am":               ["Morning chores during nap window"],
+  "Afternoon nap 1–3pm":              ["Quiet tasks 1–3pm — no vacuum or loud noise"],
+  "Morning walk at 7am":              ["Accompany on morning walk if needed"],
+  "Medication at 8am and 8pm":        ["Set medication reminder — do not skip"],
+  "Doctor visit on Tuesdays":         ["Accompany to clinic if family requests"],
+  "Blood sugar check before meals":   ["Prepare low-GI meal options"],
+};
+
+const MAX_PER_GROUP = 3;
+
+function getChipState(
+  chip: string,
+  selectedChips: string[],
+  groupChips: string[],
+): "selected" | "available" | "conflicted" | "limit" {
+  if (selectedChips.includes(chip)) return "selected";
+
+  const conflictGroup = CONFLICT_GROUPS.find((g) => g.includes(chip));
+  if (conflictGroup && conflictGroup.some((c) => selectedChips.includes(c))) return "conflicted";
+
+  const isIncompatible = Object.entries(INCOMPATIBLE).some(
+    ([trigger, blocked]) => selectedChips.includes(trigger) && blocked.includes(chip)
+  );
+  if (isIncompatible) return "conflicted";
+
+  const groupSelected = groupChips.filter((c) => selectedChips.includes(c)).length;
+  if (groupSelected >= MAX_PER_GROUP) return "limit";
+
+  return "available";
+}
+
 function formatTime12(t: string): string {
   const [h, m] = t.split(":").map(Number);
   const period = h >= 12 ? "PM" : "AM";
@@ -286,9 +362,17 @@ function MemberCard({
 
   const toggleChip = (chip: string) => {
     const isSelected = selectedChips.includes(chip);
-    const next = isSelected
-      ? selectedChips.filter((c) => c !== chip)
-      : [...selectedChips, chip];
+    let next: string[];
+    if (isSelected) {
+      next = selectedChips.filter((c) => c !== chip);
+    } else {
+      // Auto-deselect chips in the same mutual-exclusivity group
+      const conflictGroup = CONFLICT_GROUPS.find((g) => g.includes(chip));
+      const withoutConflicts = conflictGroup
+        ? selectedChips.filter((c) => !conflictGroup.includes(c))
+        : selectedChips;
+      next = [...withoutConflicts, chip];
+    }
     setSelectedChips(next);
     onRoutineChange(buildRoutineText(next, notes, chipTimes));
 
@@ -301,6 +385,14 @@ function MemberCard({
         onQuietHoursChange(remainingNap ? NAP_TO_QUIET[remainingNap] : "");
       }
     }
+  };
+
+  const commitSuggestionChip = (groupLabel: string, chip: string) => {
+    const updatedCustom = { ...customChips, [groupLabel]: [...(customChips[groupLabel] ?? []), chip] };
+    setCustomChips(updatedCustom);
+    const next = [...selectedChips, chip];
+    setSelectedChips(next);
+    onRoutineChange(buildRoutineText(next, notes, chipTimes));
   };
 
   const handleTimeChange = (chip: string, time: string) => {
@@ -384,6 +476,17 @@ function MemberCard({
             : unselectedInGroup.slice(0, Math.max(0, VISIBLE - selectedInGroup.length));
           const visibleChips = [...selectedInGroup, ...visibleUnselected];
           const hiddenCount = unselectedInGroup.length - visibleUnselected.length;
+          const groupSelectedCount = group.chips.filter((c) => selectedChips.includes(c)).length;
+
+          // Suggestions triggered by selected chips in this group
+          const groupSuggestions = group.chips
+            .filter((c) => selectedChips.includes(c) && SUGGESTIONS[c])
+            .flatMap((c) => SUGGESTIONS[c]!)
+            .filter((s, i, arr) =>
+              arr.indexOf(s) === i && // dedupe
+              !selectedChips.includes(s) &&
+              !(customChips[group.label] ?? []).includes(s)
+            );
 
           return (
             <div key={group.label} className="space-y-2">
@@ -392,13 +495,23 @@ function MemberCard({
                 {hasTimeSensitive && (
                   <p className="text-[10px] text-gray-400">— set a time for auto-prep</p>
                 )}
+                {groupSelectedCount > 0 && (
+                  <span className={cn(
+                    "ml-auto text-[10px] font-medium tabular-nums",
+                    groupSelectedCount >= MAX_PER_GROUP ? "text-amber-500" : "text-gray-400"
+                  )}>
+                    {groupSelectedCount} / {MAX_PER_GROUP}
+                  </span>
+                )}
               </div>
               <div className="flex flex-wrap gap-2">
                 {visibleChips.map((chip) => {
-                  const selected = selectedChips.includes(chip);
+                  const state = getChipState(chip, selectedChips, group.chips);
+                  const isSelected = state === "selected";
+                  const isDisabled = state === "conflicted" || state === "limit";
                   const isTimeSensitive = TIME_SENSITIVE_CHIPS.has(chip);
 
-                  if (selected && isTimeSensitive) {
+                  if (isSelected && isTimeSensitive) {
                     return (
                       <span
                         key={chip}
@@ -423,15 +536,20 @@ function MemberCard({
                   return (
                     <button
                       key={chip}
-                      onClick={() => toggleChip(chip)}
+                      onClick={() => !isDisabled && toggleChip(chip)}
+                      disabled={isDisabled}
                       className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 text-xs font-medium transition-all duration-150 active:scale-95",
-                        selected
-                          ? "border-primary bg-primary-50 text-primary"
-                          : "border-border bg-white text-gray-600 hover:border-gray-300"
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 text-xs font-medium transition-all duration-150",
+                        isSelected
+                          ? "border-primary bg-primary-50 text-primary active:scale-95"
+                          : state === "conflicted"
+                            ? "border-gray-100 bg-gray-50 text-gray-300 line-through decoration-gray-300 cursor-not-allowed"
+                            : state === "limit"
+                              ? "border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed opacity-50"
+                              : "border-border bg-white text-gray-600 hover:border-gray-300 active:scale-95"
                       )}
                     >
-                      {selected && <Check className="w-3 h-3 flex-shrink-0" />}
+                      {isSelected && <Check className="w-3 h-3 flex-shrink-0" />}
                       {chip}
                     </button>
                   );
@@ -523,6 +641,27 @@ function MemberCard({
                   </button>
                 )}
               </div>
+
+              {/* Helper-POV suggestions */}
+              {groupSuggestions.length > 0 && (
+                <div className="space-y-1.5 pt-1">
+                  <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">
+                    💡 Consider for your helper
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {groupSuggestions.map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => commitSuggestionChip(group.label, s)}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-dashed border-gray-300 bg-gray-50 text-xs text-gray-500 hover:border-gray-400 hover:bg-white hover:text-gray-700 transition-all"
+                      >
+                        <Plus className="w-3 h-3 flex-shrink-0" />
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
