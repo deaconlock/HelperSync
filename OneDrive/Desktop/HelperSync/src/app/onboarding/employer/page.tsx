@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
@@ -128,6 +128,25 @@ function EmployerOnboardingPage() {
   const [seg23Error, setSeg23Error] = useState(false);
   const [seg1Summary, setSeg1Summary] = useState<string | null>(null);
   const [completingRef] = useState({ called: false });
+  const seg23TimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const DAY_ORDER = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+
+  const mergeSegmentDays = useCallback((newDays: DayTasks[]) => {
+    setData((prev) => {
+      const existing = (prev.weeklyTasks ?? []).filter(
+        (d) => !newDays.find((n) => n.day === d.day)
+      );
+      const merged = [...existing, ...newDays].sort(
+        (a, b) => DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day)
+      );
+      const next = { ...prev, weeklyTasks: merged };
+      if (typeof window !== "undefined") {
+        localStorage.setItem("helpersync-wizard", JSON.stringify(next));
+      }
+      return next;
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Restore saved wizard state and step after hydration to avoid SSR mismatch
   useEffect(() => {
@@ -146,6 +165,13 @@ function EmployerOnboardingPage() {
     }
     setHydrated(true);
   }, []);
+
+  // Clear seg23 timeout when both segments arrive
+  useEffect(() => {
+    if (seg2Result && seg3Result) {
+      if (seg23TimeoutRef.current) clearTimeout(seg23TimeoutRef.current);
+    }
+  }, [seg2Result, seg3Result]);
 
   // Handle OAuth redirect or returning signed-in user:
   // wait for Clerk + Convex auth + hydration, then flush localStorage to Convex
@@ -210,19 +236,22 @@ function EmployerOnboardingPage() {
       }
 
       // Segment 1 returns { summary, schedule: [...] }; Segments 2+3 return bare array
+      const trimmed = accumulated.trim();
       let rawTasks: DayTasks[] | null = null;
-      const objMatch = accumulated.match(/\{[\s\S]*\}/);
-      if (objMatch) {
+      if (trimmed.startsWith("{")) {
         try {
-          const parsed = JSON.parse(objMatch[0]);
-          if (parsed.summary && Array.isArray(parsed.schedule)) {
-            onSummary?.(parsed.summary);
-            rawTasks = parsed.schedule;
+          const objMatch = trimmed.match(/\{[\s\S]*\}/);
+          if (objMatch) {
+            const parsed = JSON.parse(objMatch[0]);
+            if (parsed.summary && Array.isArray(parsed.schedule)) {
+              onSummary?.(parsed.summary);
+              rawTasks = parsed.schedule;
+            }
           }
         } catch { /* fall through to array parse */ }
       }
       if (!rawTasks) {
-        const arrMatch = accumulated.match(/\[[\s\S]*\]/);
+        const arrMatch = trimmed.match(/\[[\s\S]*\]/);
         if (!arrMatch) { onError(); return; }
         rawTasks = JSON.parse(arrMatch[0]);
       }
@@ -265,10 +294,16 @@ function EmployerOnboardingPage() {
       setSeg23Error(false);
       triggerSegment(data, ["thursday", "friday", "saturday"], setSeg2Result, () => setSeg23Error(true));
       triggerSegment(data, ["sunday"], setSeg3Result, () => setSeg23Error(true));
+      // Fallback: if segments don't arrive in 90s, show error + retry
+      if (seg23TimeoutRef.current) clearTimeout(seg23TimeoutRef.current);
+      seg23TimeoutRef.current = setTimeout(() => setSeg23Error(true), 90000);
     }
     goToStep(Math.min(step + 1, TOTAL_STEPS));
   };
   const handleBack = () => goToStep(Math.max(step - 1, 1));
+  const handleStepClick = (targetStep: number) => {
+    if (targetStep < step) goToStep(targetStep);
+  };
 
   const handleComplete = async () => {
     // Use current state, or fall back to localStorage (needed for OAuth redirect
@@ -371,6 +406,7 @@ function EmployerOnboardingPage() {
     <WizardShell
       step={step}
       totalSteps={TOTAL_STEPS}
+      onStepClick={handleStepClick}
       stepLabels={[
         "About You",
         "Your Home",
@@ -498,13 +534,7 @@ function EmployerOnboardingPage() {
           seg2Result={seg2Result}
           seg3Result={seg3Result}
           seg23Error={seg23Error}
-          onSegmentsArrived={(newDays) => {
-            const merged = [
-              ...(data.weeklyTasks ?? []).filter((d) => !newDays.find((n) => n.day === d.day)),
-              ...newDays,
-            ];
-            updateData({ weeklyTasks: merged });
-          }}
+          onSegmentsArrived={mergeSegmentDays}
           onRetrySeg23={() => {
             setSeg2Result(null);
             setSeg3Result(null);

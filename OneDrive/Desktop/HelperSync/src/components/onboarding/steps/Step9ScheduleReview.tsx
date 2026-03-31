@@ -21,6 +21,7 @@ import {
   DAYS_OF_WEEK,
   DAY_LABELS,
   DayOfWeek,
+  CATEGORY_EMOJIS,
 } from "@/types/timetable";
 import { DayTimelineView } from "@/components/timetable/DayTimelineView";
 import { AddTaskDialog } from "@/components/timetable/AddTaskDialog";
@@ -190,7 +191,123 @@ function TruncatedPills({ items, max = 4 }: { items: string[]; max?: number }) {
   );
 }
 
-// --- Slide Builder ---
+// --- Day Slide Builder ---
+
+const DAY_THEMES: Record<string, string> = {
+  monday: "Deep clean + laundry",
+  tuesday: "Bedrooms + ironing",
+  wednesday: "Kitchen + errands",
+  thursday: "Bathrooms + windows",
+  friday: "Vacuum + weekend prep",
+  saturday: "Lighter chores + special meal",
+  sunday: "Rest day + weekly reset",
+};
+
+const DAY_BG: Record<string, string> = {
+  monday:    "bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900",
+  tuesday:   "bg-gradient-to-br from-violet-700 via-purple-800 to-slate-900",
+  wednesday: "bg-gradient-to-br from-amber-600 via-orange-700 to-slate-900",
+  thursday:  "bg-gradient-to-br from-teal-600 via-cyan-700 to-slate-900",
+  friday:    "bg-gradient-to-br from-emerald-600 via-green-700 to-slate-900",
+  saturday:  "bg-gradient-to-br from-rose-500 via-pink-600 to-slate-900",
+  sunday:    "bg-gradient-to-br from-sky-600 via-blue-700 to-slate-900",
+};
+
+const DAY_EMOJIS: Record<string, string> = {
+  monday: "🧹", tuesday: "🛏️", wednesday: "🍳",
+  thursday: "🚿", friday: "🌿", saturday: "✨", sunday: "☀️",
+};
+
+function buildDaySlides(
+  tasks: DayTasks[],
+  pendingDays: Set<string>,
+): SlideData[] {
+  const dayMap = Object.fromEntries(tasks.map((d) => [d.day, d]));
+
+  return (["monday","tuesday","wednesday","thursday","friday","saturday","sunday"] as const).map((day) => {
+    const dayData = dayMap[day];
+    const isPending = pendingDays.has(day);
+    const theme = DAY_THEMES[day];
+    const bgClass = DAY_BG[day];
+    const emoji = DAY_EMOJIS[day];
+    const label = DAY_LABELS[day];
+
+    let content: React.ReactNode;
+
+    if (isPending) {
+      content = (
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-white/60">
+          <Loader2 className="w-8 h-8 animate-spin text-white/30" />
+          <p className="text-sm">Building {label}&apos;s schedule...</p>
+        </div>
+      );
+    } else if (!dayData || dayData.tasks.length === 0) {
+      content = (
+        <div className="flex-1 flex flex-col items-center justify-center gap-2 text-white/40">
+          <p className="text-sm">No tasks scheduled</p>
+        </div>
+      );
+    } else {
+      const highlights = dayData.tasks
+        .filter((t) => t.category !== "Break")
+        .slice(0, 5);
+
+      const categoryCounts = dayData.tasks.reduce<Record<string, number>>((acc, t) => {
+        if (t.category !== "Break") acc[t.category] = (acc[t.category] ?? 0) + 1;
+        return acc;
+      }, {});
+
+      content = (
+        <div className="space-y-4 text-white">
+          <StaggerChild delay={0.1}>
+            <div className="space-y-2.5">
+              {highlights.map((task) => (
+                <div key={task.taskId} className="flex items-center gap-3">
+                  <span className="text-lg flex-shrink-0">
+                    {task.emoji ?? CATEGORY_EMOJIS[task.category] ?? "✅"}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white/90 truncate">{task.taskName}</p>
+                    <p className="text-xs text-white/40">{task.time} · {task.area}</p>
+                  </div>
+                </div>
+              ))}
+              {dayData.tasks.filter((t) => t.category !== "Break").length > 5 && (
+                <p className="text-xs text-white/30 text-center">
+                  +{dayData.tasks.filter((t) => t.category !== "Break").length - 5} more tasks
+                </p>
+              )}
+            </div>
+          </StaggerChild>
+
+          <StaggerChild delay={0.35}>
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {Object.entries(categoryCounts).map(([cat, count]) => (
+                <span
+                  key={cat}
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/60"
+                >
+                  {CATEGORY_EMOJIS[cat] ?? "📋"} {count}
+                </span>
+              ))}
+            </div>
+          </StaggerChild>
+        </div>
+      );
+    }
+
+    return {
+      id: day,
+      emoji,
+      title: label,
+      subtitle: theme,
+      bgClass,
+      content,
+    };
+  });
+}
+
+// --- Final Slide with Progress ---
 
 function SlideFeedbackInput({
   slideId,
@@ -296,481 +413,6 @@ function SlideFeedbackInput({
   );
 }
 
-function buildSlides(
-  tasks: DayTasks[],
-  wizardData: WizardContext,
-  categoryFeedback: Record<string, string>,
-  onCategoryFeedbackChange: (id: string, value: string) => void,
-  hasRefined: boolean
-): SlideData[] {
-  const allTasks = tasks.flatMap((d) => d.tasks);
-  const slides: SlideData[] = [];
-
-  // ---- Shared analysis ----
-  const activeTasks = allTasks.filter((t) => t.category !== "Break");
-  const mealTasks = allTasks.filter((t) => t.category === "Meal Prep");
-  const choreTasks = allTasks.filter((t) => t.category === "Household Chores");
-  const babyTasks = allTasks.filter((t) => t.category === "Baby Care");
-  const elderlyTasks = allTasks.filter((t) => t.category === "Elderly Care");
-  const errandTasks = allTasks.filter((t) => t.category === "Errands");
-  const uniqueRooms = [...new Set(activeTasks.map((t) => t.area).filter(Boolean))];
-  const breakCount = allTasks.length - activeTasks.length;
-  const careCount = babyTasks.length + elderlyTasks.length;
-
-  // Coverage scoring
-  const hasMeals = mealTasks.length > 0;
-  const hasChores = choreTasks.length > 0;
-
-  // Hero stats for overview
-  const heroStats: { emoji: string; value: number; label: string }[] = [];
-  if (mealTasks.length > 0) heroStats.push({ emoji: "🍳", value: mealTasks.length, label: "Meals Planned" });
-  heroStats.push({ emoji: "🏠", value: uniqueRooms.length, label: "Rooms Covered" });
-  if (careCount > 0) heroStats.push({ emoji: "💛", value: careCount, label: "Care Sessions" });
-  if (breakCount > 0) heroStats.push({ emoji: "☕", value: breakCount, label: "Rest Breaks" });
-  if (errandTasks.length > 0 && heroStats.length < 4) heroStats.push({ emoji: "🛍️", value: errandTasks.length, label: "Errands Scheduled" });
-
-  // ---- SLIDE 1: Overview ----
-  slides.push({
-    id: "overview",
-    emoji: "✨",
-    title: wizardData.homeName ? `${wizardData.homeName}'s timetable is ready` : "Your timetable is ready",
-    subtitle: "Personalized for your household",
-    bgClass: "bg-gradient-to-br from-slate-900 via-slate-800 to-teal-900",
-    content: (
-      <div className="space-y-7 text-white">
-        <StaggerChild delay={0.1}>
-          <div className={cn(
-            "grid gap-4",
-            heroStats.length <= 2 ? "grid-cols-2" : heroStats.length === 3 ? "grid-cols-3" : "grid-cols-2"
-          )}>
-            {heroStats.map((stat, i) => (
-              <div key={i} className="text-center bg-white/5 rounded-2xl py-4 px-2 border border-white/10">
-                <span className="text-2xl">{stat.emoji}</span>
-                <p className="text-2xl font-display font-bold text-white mt-1">{stat.value}</p>
-                <p className="text-[10px] text-white/50">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </StaggerChild>
-
-        <StaggerChild delay={0.3}>
-          <div className="flex flex-wrap gap-x-5 gap-y-2 justify-center">
-            {[
-              hasMeals && { key: "meals", label: "Meals covered" },
-              hasChores && { key: "chores", label: "Daily cleaning" },
-              babyTasks.length > 0 && { key: "baby", label: "Child care" },
-              elderlyTasks.length > 0 && { key: "elderly", label: "Elderly care" },
-            ]
-              .filter((x): x is { key: string; label: string } => !!x)
-              .map((badge) => (
-                <CoverageBadge key={badge.key} label={badge.label} met />
-              ))}
-          </div>
-        </StaggerChild>
-      </div>
-    ),
-  });
-
-  // ---- SLIDE 2: Meals & Cooking ----
-  if (mealTasks.length > 0) {
-    const breakfastDays = new Set(
-      tasks.filter((d) => d.tasks.some((t) => t.category === "Meal Prep" && timeToMinutes(t.time) < 660)).map((d) => d.day)
-    ).size;
-    const lunchDays = new Set(
-      tasks.filter((d) => d.tasks.some((t) => {
-        const m = timeToMinutes(t.time);
-        return t.category === "Meal Prep" && m >= 660 && m < 900;
-      })).map((d) => d.day)
-    ).size;
-    const dinnerDays = new Set(
-      tasks.filter((d) => d.tasks.some((t) => t.category === "Meal Prep" && timeToMinutes(t.time) >= 900)).map((d) => d.day)
-    ).size;
-    const snackCount = mealTasks.filter((t) => {
-      const m = timeToMinutes(t.time);
-      return (m >= 540 && m < 660) || (m >= 840 && m < 960);
-    }).length;
-
-    const bVerdict = getCoverageVerdict(breakfastDays, 7);
-    const lVerdict = getCoverageVerdict(lunchDays, 7);
-    const dVerdict = getCoverageVerdict(dinnerDays, 7);
-
-    // Hero verdict
-    const allMealsFull = bVerdict.status === "full" && dVerdict.status === "full";
-    const mealHero = allMealsFull
-      ? "Full meal coverage"
-      : bVerdict.status === "full"
-        ? "Breakfast every day, dinner most days"
-        : "Meals scheduled throughout the week";
-
-    const uniqueMealNames = [...new Set(mealTasks.map((t) => t.taskName))];
-
-    const mealRows: Array<{ emoji: string; name: string; verdict: { label: string; status: "full" | "partial" | "none" } }> = [
-      { emoji: "🌅", name: "Breakfast", verdict: bVerdict },
-      { emoji: "☀️", name: "Lunch", verdict: lVerdict },
-      { emoji: "🌙", name: "Dinner", verdict: dVerdict },
-    ];
-    if (snackCount > 0) mealRows.push({ emoji: "🍪", name: "Snacks & prep", verdict: { label: `${snackCount}x/week`, status: snackCount >= 5 ? "full" : "partial" } });
-
-    slides.push({
-      id: "meals",
-      emoji: "🍳",
-      title: mealHero,
-      subtitle: "Breakfast through dinner",
-      bgClass: "bg-gradient-to-br from-amber-600 via-orange-500 to-rose-500",
-      content: (
-        <div className="space-y-6 text-white">
-          <StaggerChild delay={0.1}>
-            <div className="space-y-2.5">
-              {mealRows.map((row) => (
-                <div key={row.name} className={cn(GLASS_CARD, "flex items-center justify-between !p-3")}>
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-base">{row.emoji}</span>
-                    <span className="text-sm font-medium text-white/90">{row.name}</span>
-                  </div>
-                  <span className={cn("inline-flex items-center gap-1.5 text-xs font-medium", STATUS_COLORS[row.verdict.status])}>
-                    {row.verdict.status === "full" && <CheckCircle className="w-3.5 h-3.5" />}
-                    {row.verdict.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </StaggerChild>
-
-          <StaggerChild delay={0.3}>
-            <div>
-              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-2">What&apos;s cooking</p>
-              <TruncatedPills items={uniqueMealNames} max={4} />
-            </div>
-          </StaggerChild>
-
-          {!hasRefined && (
-            <SlideFeedbackInput
-              slideId="meals"
-              categoryFeedback={categoryFeedback}
-              onCategoryFeedbackChange={onCategoryFeedbackChange}
-              placeholder={
-                lVerdict.status === "none"
-                  ? `No lunch scheduled yet — want to add it?`
-                  : lVerdict.status === "partial"
-                    ? `Lunch only covered ${lunchDays} of 7 days — want more?`
-                    : bVerdict.status === "partial"
-                      ? `Add breakfast on more days?`
-                      : `All meals covered — adjust timing or dishes?`
-              }
-            />
-          )}
-        </div>
-      ),
-    });
-  }
-
-  // ---- SLIDE 3: Home & Cleaning ----
-  if (choreTasks.length > 0) {
-    const roomDays: Record<string, Set<string>> = {};
-    tasks.forEach((d) => {
-      d.tasks
-        .filter((t) => t.category === "Household Chores")
-        .forEach((t) => {
-          if (!roomDays[t.area]) roomDays[t.area] = new Set();
-          roomDays[t.area].add(d.day);
-        });
-    });
-
-    const roomFrequencies = Object.entries(roomDays)
-      .map(([room, days]) => ({ room, count: days.size }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 6);
-
-    const allRoomsScheduled = roomFrequencies.length >= uniqueRooms.length;
-    const hasWeekendDeepClean = tasks
-      .filter((d) => d.day === "saturday" || d.day === "sunday")
-      .some((d) => d.tasks.some((t) => t.category === "Household Chores" && (t.duration ?? 30) >= 45));
-
-    const choreHero = allRoomsScheduled
-      ? "Every room has a cleaning schedule"
-      : `${roomFrequencies.length} rooms covered`;
-
-    const uniqueChoreNames = [...new Set(choreTasks.map((t) => t.taskName))];
-
-    slides.push({
-      id: "chores",
-      emoji: "🧹",
-      title: choreHero,
-      subtitle: `${choreTasks.length} cleaning tasks weekly`,
-      bgClass: "bg-gradient-to-br from-slate-700 via-slate-600 to-cyan-800",
-      content: (
-        <div className="space-y-6 text-white">
-          <StaggerChild delay={0.1}>
-            <div className="grid grid-cols-2 gap-2.5">
-              {roomFrequencies.map(({ room, count }) => (
-                <div key={room} className={cn(GLASS_CARD, "!p-3 flex items-center gap-2.5")}>
-                  <div
-                    className={cn(
-                      "w-2 h-2 rounded-full flex-shrink-0",
-                      count >= 7 ? "bg-emerald-400" : count >= 3 ? "bg-amber-400" : "bg-white/40"
-                    )}
-                  />
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-white/90 truncate">{room}</p>
-                    <p className="text-[10px] text-white/50">{formatFrequency(count)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </StaggerChild>
-
-          <StaggerChild delay={0.3}>
-            {hasWeekendDeepClean && (
-              <div className={cn(GLASS_CARD, "!p-3 flex items-center gap-2")}>
-                <Sparkles className="w-3.5 h-3.5 text-cyan-300 flex-shrink-0" />
-                <span className="text-xs text-white/80">Weekend deep clean included</span>
-              </div>
-            )}
-          </StaggerChild>
-
-          <StaggerChild delay={0.4}>
-            <div>
-              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-2">Tasks covered</p>
-              <TruncatedPills items={uniqueChoreNames} max={4} />
-            </div>
-          </StaggerChild>
-
-          {!hasRefined && (
-            <SlideFeedbackInput
-              slideId="chores"
-              categoryFeedback={categoryFeedback}
-              onCategoryFeedbackChange={onCategoryFeedbackChange}
-              placeholder={
-                !hasWeekendDeepClean
-                  ? "No weekend deep clean — want to add one?"
-                  : roomFrequencies.some(({ count }) => count <= 1)
-                    ? `${roomFrequencies.find(({ count }) => count <= 1)!.room} is only cleaned weekly — increase?`
-                    : "Every room scheduled — adjust frequency or focus areas?"
-              }
-            />
-          )}
-        </div>
-      ),
-    });
-  }
-
-  // ---- SLIDE 4: Baby/Child Care ----
-  const children = wizardData.members.filter((m) => m.role === "Child");
-  if (babyTasks.length > 0) {
-    const childNames = children.map((c) => c.name).filter(Boolean);
-    const perDay = Math.round(babyTasks.length / 7);
-    const photoRequired = babyTasks.filter((t) => t.requiresPhoto).length;
-
-    const morningActivities = [...new Set(
-      babyTasks.filter((t) => timeToMinutes(t.time) < 720).map((t) => t.taskName)
-    )].slice(0, 3);
-    const afternoonActivities = [...new Set(
-      babyTasks.filter((t) => timeToMinutes(t.time) >= 720).map((t) => t.taskName)
-    )].slice(0, 3);
-
-    const babyHero = childNames.length > 0
-      ? `${perDay} activities daily for ${childNames.join(" & ")}`
-      : `${perDay} care activities every day`;
-
-    slides.push({
-      id: "baby",
-      emoji: "🍼",
-      title: babyHero,
-      subtitle: children.length > 0
-        ? children.map((c) => `${c.name}${c.age ? ` (${c.age}y)` : ""}`).join(", ")
-        : undefined,
-      bgClass: "bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600",
-      content: (
-        <div className="space-y-6 text-white">
-          <StaggerChild delay={0.1}>
-            <div className="grid grid-cols-2 gap-3">
-              <div className={GLASS_CARD}>
-                <p className="text-[10px] text-white/50 uppercase tracking-wider mb-2">Morning</p>
-                <div className="space-y-1.5">
-                  {morningActivities.map((name) => (
-                    <span key={name} className="text-xs text-white/80 flex items-center gap-1.5">
-                      <span className="w-1 h-1 rounded-full bg-emerald-300 flex-shrink-0 inline-block" />
-                      {name}
-                    </span>
-                  ))}
-                  {morningActivities.length === 0 && (
-                    <p className="text-xs text-white/40">—</p>
-                  )}
-                </div>
-              </div>
-              <div className={GLASS_CARD}>
-                <p className="text-[10px] text-white/50 uppercase tracking-wider mb-2">Afternoon</p>
-                <div className="space-y-1.5">
-                  {afternoonActivities.map((name) => (
-                    <span key={name} className="text-xs text-white/80 flex items-center gap-1.5">
-                      <span className="w-1 h-1 rounded-full bg-cyan-300 flex-shrink-0 inline-block" />
-                      {name}
-                    </span>
-                  ))}
-                  {afternoonActivities.length === 0 && (
-                    <p className="text-xs text-white/40">—</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </StaggerChild>
-
-          {photoRequired > 0 && (
-            <StaggerChild delay={0.3}>
-              <div className={cn(GLASS_CARD, "!p-3 flex items-center gap-2")}>
-                <Camera className="w-3.5 h-3.5 text-emerald-300 flex-shrink-0" />
-                <span className="text-xs text-white/80">
-                  {photoRequired} photo check-ins for peace of mind
-                </span>
-              </div>
-            </StaggerChild>
-          )}
-
-          {!hasRefined && (
-            <SlideFeedbackInput
-              slideId="baby"
-              categoryFeedback={categoryFeedback}
-              onCategoryFeedbackChange={onCategoryFeedbackChange}
-              placeholder={
-                morningActivities.length === 0
-                  ? "Mornings are light — add more activities?"
-                  : photoRequired === 0
-                    ? "Want photo check-ins for peace of mind?"
-                    : childNames.length > 0
-                      ? `Adjust activity types or timing for ${childNames[0]}?`
-                      : "Adjust activity types or timing?"
-              }
-            />
-          )}
-        </div>
-      ),
-    });
-  }
-
-  // ---- SLIDE 5: Elderly Care ----
-  const elderlyMembers = wizardData.members.filter((m) => m.role === "Elderly");
-  if (elderlyTasks.length > 0) {
-    const elderlyNames = elderlyMembers.map((e) => e.name).filter(Boolean);
-    const perDay = Math.round(elderlyTasks.length / 7);
-    const uniqueElderlyNames = [...new Set(elderlyTasks.map((t) => t.taskName))];
-
-    const elderlyHero = elderlyNames.length > 0
-      ? `Daily care for ${elderlyNames.join(" & ")}`
-      : "Daily elderly care routine";
-
-    slides.push({
-      id: "elderly",
-      emoji: "👴",
-      title: elderlyHero,
-      subtitle: `${perDay} activities per day`,
-      bgClass: "bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-700",
-      content: (
-        <div className="space-y-6 text-white">
-          <StaggerChild delay={0.1}>
-            <div className={GLASS_CARD}>
-              <p className="text-[10px] text-white/50 uppercase tracking-wider mb-3">Care activities</p>
-              <div className="space-y-2">
-                {uniqueElderlyNames.slice(0, 6).map((name) => (
-                  <span key={name} className="text-sm text-white/85 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-violet-300 flex-shrink-0 inline-block" />
-                    {name}
-                  </span>
-                ))}
-                {uniqueElderlyNames.length > 6 && (
-                  <p className="text-xs text-white/40 pl-3.5">+{uniqueElderlyNames.length - 6} more</p>
-                )}
-              </div>
-            </div>
-          </StaggerChild>
-
-          {elderlyTasks.some((t) => t.requiresPhoto) && (
-            <StaggerChild delay={0.3}>
-              <div className={cn(GLASS_CARD, "!p-3 flex items-center gap-2")}>
-                <Camera className="w-3.5 h-3.5 text-violet-300 flex-shrink-0" />
-                <span className="text-xs text-white/80">Photo verification for care tasks</span>
-              </div>
-            </StaggerChild>
-          )}
-
-          {!hasRefined && (
-            <SlideFeedbackInput
-              slideId="elderly"
-              categoryFeedback={categoryFeedback}
-              onCategoryFeedbackChange={onCategoryFeedbackChange}
-              placeholder={
-                !elderlyTasks.some((t) => t.requiresPhoto)
-                  ? "Add photo verification for care tasks?"
-                  : "Adjust care routine timing or add activities?"
-              }
-            />
-          )}
-        </div>
-      ),
-    });
-  }
-
-  // ---- SLIDE 6: Errands ----
-  if (errandTasks.length > 0) {
-    const uniqueErrandNames = [...new Set(errandTasks.map((t) => t.taskName))];
-    const errandDayNames = [...new Set(
-      tasks
-        .filter((d) => d.tasks.some((t) => t.category === "Errands"))
-        .map((d) => DAY_LABELS[d.day as DayOfWeek])
-    )];
-
-    const errandHero = errandDayNames.length <= 2
-      ? `Errands batched on ${errandDayNames.join(" & ")}`
-      : `Errands across ${errandDayNames.length} days`;
-
-    slides.push({
-      id: "errands",
-      emoji: "🛍️",
-      title: errandHero,
-      subtitle: errandDayNames.length <= 2 ? "Grouped for efficiency" : `${errandTasks.length} errands weekly`,
-      bgClass: "bg-gradient-to-br from-rose-500 via-pink-500 to-orange-400",
-      content: (
-        <div className="space-y-6 text-white">
-          <StaggerChild delay={0.1}>
-            <div className={GLASS_CARD}>
-              <p className="text-[10px] text-white/50 uppercase tracking-wider mb-2">Scheduled days</p>
-              <div className="flex flex-wrap gap-2">
-                {errandDayNames.map((day) => (
-                  <span key={day} className="px-3 py-1.5 bg-white/15 rounded-xl text-sm font-medium text-white/90">
-                    {day}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </StaggerChild>
-
-          <StaggerChild delay={0.3}>
-            <div>
-              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-2">What&apos;s planned</p>
-              <TruncatedPills items={uniqueErrandNames} max={4} />
-            </div>
-          </StaggerChild>
-
-          {!hasRefined && (
-            <SlideFeedbackInput
-              slideId="errands"
-              categoryFeedback={categoryFeedback}
-              onCategoryFeedbackChange={onCategoryFeedbackChange}
-              placeholder={
-                errandDayNames.length > 3
-                  ? `Errands on ${errandDayNames.length} days — consolidate to fewer?`
-                  : errandDayNames.length === 1
-                    ? `All errands on ${errandDayNames[0]} — spread across the week?`
-                    : "Add or move errand days?"
-              }
-            />
-          )}
-        </div>
-      ),
-    });
-  }
-
-  return slides;
-}
 
 // --- Final Slide with Progress ---
 
@@ -1172,8 +814,8 @@ export function Step9ScheduleReview({ weeklyTasks, rooms, onUpdate, onComplete, 
   }, []);
 
   const slides = useMemo(
-    () => buildSlides(localTasks, wizardData, categoryFeedback, handleCategoryFeedbackChange, hasRefined),
-    [localTasks, wizardData, categoryFeedback, handleCategoryFeedbackChange, hasRefined]
+    () => buildDaySlides(localTasks, pendingDays),
+    [localTasks, pendingDays]
   );
 
   // Merge incoming segments into localTasks as they arrive

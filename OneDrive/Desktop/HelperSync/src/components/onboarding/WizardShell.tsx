@@ -11,6 +11,7 @@ interface WizardShellProps {
   stepLabels?: string[];
   onNext: () => void | Promise<void>;
   onBack: () => void;
+  onStepClick?: (step: number) => void;
   canProceed: boolean;
   isLastStep?: boolean;
   wide?: boolean;
@@ -24,6 +25,7 @@ export function WizardShell({
   stepLabels,
   onNext,
   onBack,
+  onStepClick,
   canProceed,
   isLastStep,
   wide,
@@ -53,19 +55,30 @@ export function WizardShell({
 
           {/* Progress bar */}
           <div className="flex gap-1">
-            {Array.from({ length: totalSteps }).map((_, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "h-1 flex-1 rounded-full transition-all duration-500",
-                  i + 1 < step
-                    ? "bg-gray-900"
-                    : i + 1 === step
-                      ? "bg-gray-900 animate-progress-fill"
-                      : "bg-gray-200"
-                )}
-              />
-            ))}
+            {Array.from({ length: totalSteps }).map((_, i) => {
+              const stepNum = i + 1;
+              const isPast = stepNum < step;
+              const isCurrent = stepNum === step;
+              if (isPast) {
+                return (
+                  <button
+                    key={i}
+                    onClick={() => onStepClick?.(stepNum)}
+                    className="h-1 flex-1 rounded-full bg-gray-900 hover:bg-gray-500 transition-colors"
+                    aria-label={`Go back to step ${stepNum}`}
+                  />
+                );
+              }
+              return (
+                <div
+                  key={i}
+                  className={cn(
+                    "h-1 flex-1 rounded-full transition-all duration-500",
+                    isCurrent ? "bg-gray-900 animate-progress-fill" : "bg-gray-200"
+                  )}
+                />
+              );
+            })}
           </div>
         </div>
       </header>

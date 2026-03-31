@@ -277,7 +277,12 @@ TASK RULES
     • Soaking dishes / laundry pre-soak: mark passive, can overlap with tidying tasks
     • DO NOT mark passive: vacuuming, mopping, ironing, childcare, elderly care (require helper presence)
     • Passive tasks DO count toward the daily task total.
-${elderlyMembers.length > 0 ? `11. ELDERLY RULES: medication at EXACT times specified. Quiet during naps. Check-in tasks morning AND evening. For limited mobility: check-in every 2–3 hours. No back-to-back physical tasks when helper has care duties.` : ""}
+11. MULTI-ROOM SPLITTING: If the home has multiple rooms of the same type, create SEPARATE tasks for each — do NOT combine them.
+    • Each bathroom = its own task, 25–35 min each. Name specifically: "Clean master bathroom", "Clean kids bathroom".
+    • Each bedroom = its own task, 30–45 min each. Name specifically: "Tidy master bedroom", "Tidy kids bedroom".
+    • Schedule them back-to-back (sequential is fine for same-category tasks).
+    • NEVER write "Clean all bathrooms" or "Clean 3 bathrooms" as a single task.
+${elderlyMembers.length > 0 ? `12. ELDERLY RULES: medication at EXACT times specified. Quiet during naps. Check-in tasks morning AND evening. For limited mobility: check-in every 2–3 hours. No back-to-back physical tasks when helper has care duties.` : ""}
 
 ═══════════════════════════════
 OUTPUT FORMAT
@@ -285,7 +290,7 @@ OUTPUT FORMAT
 ${outputFormat}
 
 ${daysClause}
-Compact format — one task per line. Duration guide: quick tidy=15, standard clean=30, full room=45, cooking=30–45, grocery=60.
+Compact format — one task per line. Duration guide: quick tidy=15, standard clean=30, full room=45, cooking=30–45, grocery=60. Per bathroom=25–35 min (separate task each). Per bedroom=30–45 min (separate task each).
 Task names: under 30 characters. Specific ("Vacuum living room" not "Clean room").
 taskId format: first 3 letters of day + sequence number (e.g. mon-1, tue-2).
 ${ctx.refineFeedback && ctx.currentSchedule ? `
