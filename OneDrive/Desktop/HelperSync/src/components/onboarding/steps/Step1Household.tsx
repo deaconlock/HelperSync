@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { X, Plus, Home, Check, Minus, ChevronDown } from "lucide-react";
+import { X, Plus, Home, Check, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { HomeSize, SetupFor, Priority } from "@/app/onboarding/employer/page";
+import type { HomeSize, SetupFor } from "@/app/onboarding/employer/page";
 import { InfoTooltip } from "@/components/ui/InfoTooltip";
 
 // --- Constants ---
@@ -14,28 +14,20 @@ const COMBO_ROOMS: { label: string; blocks: string[] }[] = [
   { label: "Living + Dining (open-plan)", blocks: ["Living Room", "Dining Area"] },
 ];
 
-const PRESET_ROOMS = [
-  "Master Bedroom",
-  "Common Bedroom",
-  "Living Room",
-  "Kitchen",
-  "Dining Area",
-  "Bathroom",
-  "Helper's Room",
-  "Yard / Service Area",
-  "Store Room",
-  "Study Room",
-  "Balcony",
+const PRESET_ROOMS: { label: string; emoji: string }[] = [
+  { label: "Master Bedroom", emoji: "🛏️" },
+  { label: "Common Bedroom", emoji: "🛌" },
+  { label: "Living Room", emoji: "🛋️" },
+  { label: "Kitchen", emoji: "🍳" },
+  { label: "Dining Area", emoji: "🍽️" },
+  { label: "Bathroom", emoji: "🚿" },
+  { label: "Helper's Room", emoji: "🛏️" },
+  { label: "Service Area", emoji: "🌿" },
+  { label: "Store Room", emoji: "📦" },
+  { label: "Study Room", emoji: "📚" },
+  { label: "Balcony", emoji: "🌅" },
 ];
 
-// Rooms where having multiples makes sense
-const COUNTABLE_ROOMS = new Set([
-  "Common Bedroom",
-  "Bathroom",
-  "Dining Area",
-  "Balcony",
-  "Study Room",
-]);
 
 const SIZE_OPTIONS: { value: HomeSize; emoji: string; label: string; hint: string }[] = [
   { value: "compact", emoji: "🏠", label: "Compact", hint: "~700 sqft / 65 sqm" },
@@ -83,7 +75,7 @@ const DEEP_CLEAN_SUGGESTIONS: DeepCleanSuggestion[] = [
   { id: "sofa", label: "Sofa / upholstery vacuuming", frequency: "Every 3 months", rooms: ["living"], defaultChecked: false },
 ];
 
-function getDeepCleanSuggestions(rooms: string[]): DeepCleanSuggestion[] {
+export function getDeepCleanSuggestions(rooms: string[]): DeepCleanSuggestion[] {
   const lower = rooms.map((r) => r.toLowerCase());
   return DEEP_CLEAN_SUGGESTIONS.filter((s) =>
     s.rooms.includes("*") || s.rooms.some((kw) => lower.some((r) => r.includes(kw)))
@@ -102,19 +94,15 @@ interface Step1Props {
   homeDescription: string;
   homeSize: HomeSize;
   setupFor: SetupFor | null;
-  householdFocus: Priority[];
-  deepCleanTasks: string[];
+
   onUpdate: (rooms: string[], homeName: string, homeDescription: string, homeSize: HomeSize) => void;
-  onDeepCleanUpdate: (tasks: string[]) => void;
 }
 
-export function Step1Household({ rooms, homeName, homeSize, setupFor, householdFocus, deepCleanTasks, onUpdate, onDeepCleanUpdate }: Step1Props) {
+export function Step1Household({ rooms, homeName, homeSize, setupFor, onUpdate }: Step1Props) {
   const [roomMap, setRoomMap] = useState<Record<string, number>>(() => parseRoomsToMap(rooms));
   const [localHomeName, setLocalHomeName] = useState(homeName);
   const [localSize, setLocalSize] = useState<HomeSize>(homeSize);
   const [customRoom, setCustomRoom] = useState("");
-  const [localDeepClean, setLocalDeepClean] = useState<string[]>(deepCleanTasks);
-  const [deepCleanOpen, setDeepCleanOpen] = useState(deepCleanTasks.length > 0);
 
   const isOwn = setupFor !== "family";
 
@@ -126,11 +114,9 @@ export function Step1Household({ rooms, homeName, homeSize, setupFor, householdF
     const next = { ...roomMap };
     if (!next[room]) {
       next[room] = 1;
-    } else if (COUNTABLE_ROOMS.has(room) && next[room] > 1) {
-      // Minus button on stepper — decrement
+    } else if (next[room] > 1) {
       next[room] -= 1;
     } else {
-      // Non-countable toggle, or countable hitting 0 → deselect
       delete next[room];
     }
     setRoomMap(next);
@@ -177,28 +163,28 @@ export function Step1Household({ rooms, homeName, homeSize, setupFor, householdF
     emit(next, localHomeName, localSize);
   };
 
-  const allKnownRooms = new Set([...PRESET_ROOMS, ...COMBO_ROOMS.map((c) => c.label)]);
+  const allKnownRooms = new Set([...PRESET_ROOMS.map((r) => r.label), ...COMBO_ROOMS.map((c) => c.label)]);
   const customRooms = Object.keys(roomMap).filter((r) => !allKnownRooms.has(r));
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col items-center text-center">
-        <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
-          <Home className="w-8 h-8 text-gray-700" />
+        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+          <Home className="w-8 h-8 text-primary" />
         </div>
         <h2 className="text-2xl font-display font-semibold tracking-tight text-gray-900 mb-1">
-          {isOwn ? "Your home, your helper's workplace" : "The home, their workplace"}
+          Tell us about your home
         </h2>
         <p className="text-text-secondary text-sm max-w-md">
-          Select the rooms and areas — we&apos;ll build the schedule around them.
+          This helps us create a realistic cleaning schedule.
         </p>
       </div>
 
       {/* Home name */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Home name <span className="text-gray-400 font-normal">(optional)</span>
+          Home nickname <span className="text-gray-400 font-normal">(optional)</span>
         </label>
         <input
           type="text"
@@ -207,21 +193,50 @@ export function Step1Household({ rooms, homeName, homeSize, setupFor, householdF
             setLocalHomeName(e.target.value);
             emit(roomMap, e.target.value, localSize);
           }}
-          placeholder={isOwn ? "e.g. The Smith Family Home" : "e.g. Mum & Dad's Place"}
+          placeholder={isOwn ? "e.g. The Tan Family Home" : "e.g. Mum & Dad's Place"}
           className="w-full px-4 py-3 rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
         />
+      </div>
+
+      {/* Home size — moved above rooms */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-sm font-medium text-gray-700">Home size</h3>
+          <InfoTooltip content="Home size helps us estimate the right number of tasks and cleaning time per day. A compact home gets lighter cleaning loads; spacious homes get more thorough coverage." />
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {SIZE_OPTIONS.map((opt) => {
+            const isSelected = localSize === opt.value;
+            return (
+              <button
+                key={opt.value}
+                onClick={() => handleSizeChange(opt.value)}
+                className={cn(
+                  "flex flex-col items-center gap-1.5 p-4 rounded-2xl border-2 text-center transition-all duration-200",
+                  isSelected
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-white hover:border-gray-300"
+                )}
+              >
+                <span className="text-2xl">{opt.emoji}</span>
+                <p className={cn("font-display font-semibold text-sm", isSelected ? "text-primary" : "text-gray-900")}>{opt.label}</p>
+                <p className="text-xs leading-tight text-gray-400">{opt.hint}</p>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Room picker */}
       <div className="space-y-3">
         <div>
           <label className="block text-sm font-medium text-gray-700">
-            What rooms does {isOwn ? "your home" : "the home"} have?
+            Rooms to clean
           </label>
         </div>
 
-        {/* Combo chips */}
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-2">
+          {/* Combo options — span full width */}
           {COMBO_ROOMS.map(({ label, blocks }) => {
             const selected = !!roomMap[label];
             return (
@@ -229,95 +244,89 @@ export function Step1Household({ rooms, homeName, homeSize, setupFor, householdF
                 key={label}
                 onClick={() => toggleCombo(label, blocks)}
                 className={cn(
-                  "flex items-center gap-1.5 px-3.5 py-2 rounded-xl border-2 text-sm font-medium transition-all duration-150",
+                  "col-span-2 w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all duration-150",
                   selected
-                    ? "border-primary bg-primary-50 text-primary"
+                    ? "border-primary bg-primary/5 text-primary"
                     : "border-dashed border-gray-300 bg-white text-gray-500 hover:border-gray-400 hover:text-gray-700"
                 )}
               >
-                {selected && <Check className="w-3.5 h-3.5 flex-shrink-0" />}
-                {label}
+                <span className="text-lg">🔗</span>
+                <span className="flex-1 text-left leading-snug">{label}</span>
+                {selected && <Check className="w-4 h-4 flex-shrink-0" />}
               </button>
             );
           })}
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {PRESET_ROOMS.map((room) => {
-            const count = roomMap[room] ?? 0;
+          {PRESET_ROOMS.map(({ label, emoji }) => {
+            const count = roomMap[label] ?? 0;
             const selected = count > 0;
-            const countable = COUNTABLE_ROOMS.has(room);
-            const blocked = blockedRooms.has(room);
+            const blocked = blockedRooms.has(label);
             return (
-              <div key={room} className="flex items-center">
-                {selected && countable ? (
-                  // Inline stepper for countable selected rooms
-                  <div className="flex items-center border-2 border-primary bg-primary-50 rounded-xl overflow-hidden text-sm font-medium text-primary">
-                    <button
-                      onClick={() => tapPreset(room)}
-                      className="px-2.5 py-2 hover:bg-primary/10 transition-colors"
-                      aria-label={`Remove one ${room}`}
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                    <span className="px-1 min-w-[4rem] text-center select-none">
-                      {room} {count > 1 && <span className="font-semibold">×{count}</span>}
+              <div key={label}>
+                {selected ? (
+                  // Compact selected stepper
+                  <div className="w-full h-11 flex items-center gap-2 px-3 rounded-xl border-2 border-primary bg-primary/5 text-primary">
+                    <span className="text-lg flex-shrink-0">{emoji}</span>
+                    <span className="flex-1 text-xs font-medium leading-tight">
+                      {label}{count > 1 && <span className="font-bold"> ×{count}</span>}
                     </span>
-                    <button
-                      onClick={() => {
-                        const next = { ...roomMap, [room]: count + 1 };
-                        setRoomMap(next);
-                        emit(next, localHomeName, localSize);
-                      }}
-                      className="px-2.5 py-2 hover:bg-primary/10 transition-colors"
-                      aria-label={`Add one more ${room}`}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button
+                        onClick={() => tapPreset(label)}
+                        className="w-6 h-6 rounded-full border border-primary/40 flex items-center justify-center hover:bg-primary/10 transition-colors"
+                        aria-label={`Remove one ${label}`}
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="text-xs font-semibold w-3 text-center">{count}</span>
+                      <button
+                        onClick={() => {
+                          const next = { ...roomMap, [label]: count + 1 };
+                          setRoomMap(next);
+                          emit(next, localHomeName, localSize);
+                        }}
+                        className="w-6 h-6 rounded-full border border-primary/40 flex items-center justify-center hover:bg-primary/10 transition-colors"
+                        aria-label={`Add one more ${label}`}
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  // Standard toggle chip
+                  // Compact toggle chip
                   <button
-                    onClick={() => !blocked && tapPreset(room)}
+                    onClick={() => !blocked && tapPreset(label)}
                     disabled={blocked}
                     className={cn(
-                      "flex items-center gap-1.5 px-3.5 py-2 rounded-xl border-2 text-sm font-medium transition-all duration-150",
+                      "w-full h-11 flex items-center gap-2 px-3 rounded-xl border-2 text-sm font-medium transition-all duration-150",
                       blocked
                         ? "border-border bg-gray-50 text-gray-300 cursor-not-allowed"
-                        : selected
-                          ? "border-primary bg-primary-50 text-primary"
-                          : "border-border bg-white text-gray-700 hover:border-gray-300"
+                        : "border-border bg-white text-gray-700 hover:border-gray-300"
                     )}
                   >
-                    {selected && <Check className="w-3.5 h-3.5 flex-shrink-0" />}
-                    {room}
+                    <span className="text-lg flex-shrink-0">{emoji}</span>
+                    <span className="text-xs leading-tight text-left">{label}</span>
                   </button>
                 )}
               </div>
             );
           })}
-        </div>
-
-        {/* Custom rooms */}
-        {customRooms.length > 0 && (
-          <div className="flex flex-wrap gap-2 pt-1">
-            {customRooms.map((room) => (
-              <span
-                key={room}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border-2 border-primary bg-primary-50 text-primary text-sm font-medium"
+          {/* Custom rooms */}
+          {customRooms.map((room) => (
+            <span
+              key={room}
+              className="h-11 flex items-center gap-2 px-3 rounded-xl border-2 border-primary bg-primary/5 text-primary text-sm font-medium relative"
+            >
+              <span className="text-lg">🏠</span>
+              <span className="text-xs leading-tight flex-1">{room}</span>
+              <button
+                onClick={() => removeRoom(room)}
+                className="hover:text-primary/70 transition-colors flex-shrink-0"
               >
-                <Check className="w-3.5 h-3.5 flex-shrink-0" />
-                {room}
-                <button
-                  onClick={() => removeRoom(room)}
-                  className="ml-0.5 hover:text-primary/70 transition-colors"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </span>
+          ))}
+        </div>
 
         {/* Add custom room */}
         <div className="flex gap-2 pt-1">
@@ -339,96 +348,7 @@ export function Step1Household({ rooms, homeName, homeSize, setupFor, householdF
         </div>
       </div>
 
-      {/* Home size */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-1.5">
-          <h3 className="text-sm font-medium text-gray-700">
-            How big is {isOwn ? "your home" : "the home"}?
-          </h3>
-          <InfoTooltip content="Home size helps us estimate the right number of tasks and cleaning time per day. A compact home gets lighter cleaning loads; spacious homes get more thorough coverage." />
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          {SIZE_OPTIONS.map((opt) => {
-            const isSelected = localSize === opt.value;
-            return (
-              <button
-                key={opt.value}
-                onClick={() => handleSizeChange(opt.value)}
-                className={cn(
-                  "flex flex-col items-center gap-1.5 p-4 rounded-2xl border text-center transition-all duration-200",
-                  isSelected
-                    ? "border-gray-900 bg-gray-50 shadow-sm"
-                    : "border-border bg-white hover:border-gray-300"
-                )}
-              >
-                <span className="text-2xl">{opt.emoji}</span>
-                <p className="font-display font-semibold text-sm text-gray-900">{opt.label}</p>
-                <p className="text-xs leading-tight text-gray-400">{opt.hint}</p>
-              </button>
-            );
-          })}
-        </div>
-        <p className="text-xs text-gray-400 text-center">
-          Helps us estimate how long cleaning tasks take
-        </p>
-      </div>
 
-      {/* Deep clean — only when cleanliness is a priority and rooms are selected */}
-      {householdFocus.includes("cleanliness") && Object.keys(roomMap).length > 0 && (() => {
-        const suggestions = getDeepCleanSuggestions(mapToRooms(roomMap));
-        if (suggestions.length === 0) return null;
-        const toggleDeepClean = (id: string) => {
-          const updated = localDeepClean.includes(id)
-            ? localDeepClean.filter((x) => x !== id)
-            : [...localDeepClean, id];
-          setLocalDeepClean(updated);
-          onDeepCleanUpdate(updated);
-        };
-        return (
-          <div className="space-y-2 border-t border-border pt-6">
-            <button
-              onClick={() => setDeepCleanOpen(!deepCleanOpen)}
-              className="flex items-center gap-2 w-full text-left"
-            >
-              <span className="text-base">🧽</span>
-              <div className="flex-1">
-                <h3 className="font-medium text-gray-900 text-sm">Periodic deep cleaning</h3>
-                <p className="text-xs text-gray-400">Tasks most people forget — we&apos;ll rotate them into the weekly schedule</p>
-              </div>
-              {localDeepClean.length > 0 && (
-                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                  {localDeepClean.length}
-                </span>
-              )}
-              <ChevronDown className={cn("w-4 h-4 text-gray-400 transition-transform duration-200", deepCleanOpen && "rotate-180")} />
-            </button>
-            {deepCleanOpen && (
-              <div className="space-y-1 pt-1">
-                {suggestions.map((s) => {
-                  const isChecked = localDeepClean.includes(s.id);
-                  return (
-                    <button
-                      key={s.id}
-                      onClick={() => toggleDeepClean(s.id)}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all duration-150",
-                        isChecked ? "border-gray-300 bg-gray-50" : "border-transparent bg-white hover:bg-gray-50"
-                      )}
-                    >
-                      <div className={cn("w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors", isChecked ? "bg-gray-900 border-gray-900" : "border-gray-300")}>
-                        {isChecked && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-                      </div>
-                      <p className="flex-1 text-sm text-gray-900">{s.label}</p>
-                      <span className="text-xs text-gray-400 flex-shrink-0">{s.frequency}</span>
-                    </button>
-                  );
-                })}
-                <p className="text-xs text-gray-400 pt-1">Frequencies can be adjusted anytime in your timetable</p>
-              </div>
-            )}
-          </div>
-        );
-      })()}
     </div>
   );
 }

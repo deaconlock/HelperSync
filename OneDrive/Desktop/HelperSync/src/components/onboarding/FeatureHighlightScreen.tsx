@@ -1,18 +1,17 @@
 "use client";
 
-import { ArrowRight, type LucideIcon } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 
 interface FeatureHighlightScreenProps {
-  icon: LucideIcon;
   title: string;
   body: string;
   image?: string;
-  imageCrop?: string; // e.g. "90%" clips bottom 10% to remove watermarks
+  imageCrop?: string;
   onContinue: () => void;
 }
 
-export function FeatureHighlightScreen({ icon: Icon, title, body, image, imageCrop, onContinue }: FeatureHighlightScreenProps) {
+export function FeatureHighlightScreen({ title, body, image, imageCrop, onContinue }: FeatureHighlightScreenProps) {
   return (
     <div
       className="min-h-screen bg-background flex flex-col items-center justify-center px-6"
@@ -38,21 +37,23 @@ export function FeatureHighlightScreen({ icon: Icon, title, body, image, imageCr
           </div>
         )}
 
-        {/* Card */}
-        <div
-          className="flex items-start gap-4 bg-white rounded-2xl shadow-sm p-5 mb-8"
+        {/* Title */}
+        <h1
+          className="text-3xl font-display font-semibold tracking-tight text-gray-900 mb-4 leading-snug text-center"
           style={{ animation: `fade-in-up 0.6s cubic-bezier(0.22,1,0.36,1) ${image ? "0.22s" : "0.1s"} both` }}
         >
-          <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <Icon className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <p className="text-base font-display font-semibold text-gray-900 mb-1">{title}</p>
-            <p className="text-sm text-text-secondary leading-relaxed">{body}</p>
-          </div>
-        </div>
+          {title}
+        </h1>
 
-        <div style={{ animation: `fade-in-up 0.6s cubic-bezier(0.22,1,0.36,1) ${image ? "0.36s" : "0.22s"} both` }}>
+        {/* Body */}
+        <p
+          className="text-sm text-text-secondary leading-relaxed mb-10 text-center"
+          style={{ animation: `fade-in-up 0.6s cubic-bezier(0.22,1,0.36,1) ${image ? "0.36s" : "0.22s"} both` }}
+        >
+          {body}
+        </p>
+
+        <div style={{ animation: `fade-in-up 0.6s cubic-bezier(0.22,1,0.36,1) ${image ? "0.48s" : "0.36s"} both` }}>
           <button
             onClick={onContinue}
             className="w-full flex items-center justify-center gap-2 py-4 bg-gray-900 text-white rounded-xl font-display font-semibold text-base hover:bg-gray-800 shadow-sm hover:shadow-md transition-all duration-200"

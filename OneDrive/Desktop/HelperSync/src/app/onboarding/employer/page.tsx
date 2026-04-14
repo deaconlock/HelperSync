@@ -12,6 +12,7 @@ import { Step0Qualification } from "@/components/onboarding/steps/Step0Qualifica
 import { Step1Household } from "@/components/onboarding/steps/Step1Household";
 import { Step2Members } from "@/components/onboarding/steps/Step2Members";
 import { Step4DailyLife } from "@/components/onboarding/steps/Step4DailyLife";
+import { Step1bDeepClean } from "@/components/onboarding/steps/Step1bDeepClean";
 import { Step4bServicePrefs } from "@/components/onboarding/steps/Step4bServicePrefs";
 import { Step5Experience } from "@/components/onboarding/steps/Step5Experience";
 import { Step7HelperDetails } from "@/components/onboarding/steps/Step7HelperDetails";
@@ -23,7 +24,10 @@ import { PersonaCard } from "@/components/onboarding/PersonaCard";
 import { WelcomeScreen } from "@/components/onboarding/WelcomeScreen";
 import { ReaffirmScreen } from "@/components/onboarding/ReaffirmScreen";
 import { FeatureHighlightScreen } from "@/components/onboarding/FeatureHighlightScreen";
-import { CalendarDays, Smartphone } from "lucide-react";
+import { SocialProofScreen } from "@/components/onboarding/SocialProofScreen";
+import { SurveyIntroScreen } from "@/components/onboarding/SurveyIntroScreen";
+import { SurveyQuestionScreen } from "@/components/onboarding/SurveyQuestionScreen";
+import { SurveyResultScreen } from "@/components/onboarding/SurveyResultScreen";
 import { toast } from "sonner";
 import { useAuth } from "@clerk/nextjs";
 import { useConvexAuth } from "convex/react";
@@ -48,7 +52,7 @@ export type HomeSize = "compact" | "midsize" | "spacious";
 
 export type SetupFor = "own" | "family";
 export type MiscommunicationFrequency = "never" | "sometimes" | "often" | "always";
-export type TimeReexplainingTasks = "under30" | "30to60" | "over60";
+export type TimeReexplainingTasks = "under30" | "30to60" | "over60" | "toomuch";
 
 export interface WizardData {
   // Qualifying questions (Step 1)
@@ -119,7 +123,7 @@ const initialData: WizardData = {
   weeklyTasks: null,
 };
 
-const TOTAL_STEPS = 9;
+const TOTAL_STEPS = 8;
 
 function EmployerOnboardingPage() {
   const router = useRouter();
@@ -138,6 +142,12 @@ function EmployerOnboardingPage() {
   const [showReaffirm, setShowReaffirm] = useState(false);
   const [showFeature1, setShowFeature1] = useState(false);
   const [showFeature2, setShowFeature2] = useState(false);
+  const [showFeature3, setShowFeature3] = useState(false);
+  const [showSocialProof, setShowSocialProof] = useState(false);
+  const [showSurveyIntro, setShowSurveyIntro] = useState(false);
+  const [surveyStep, setSurveyStep] = useState(0); // 0 = not started, 1–5 = active question
+  const [showSurveyResult, setShowSurveyResult] = useState(false);
+  const [experienceAnswer, setExperienceAnswer] = useState<string | null>(null);
   const [showPersonaCard, setShowPersonaCard] = useState(false);
   const [showStep4Reward, setShowStep4Reward] = useState(false);
   const [seg1Result, setSeg1Result] = useState<DayTasks[] | null>(null);
@@ -205,7 +215,7 @@ function EmployerOnboardingPage() {
     const savedStep = localStorage.getItem("helpersync-wizard-step");
     if (savedStep) {
       const parsed = parseInt(savedStep, 10);
-      if (parsed >= 1 && parsed <= 9) setStep(parsed);
+      if (parsed >= 1 && parsed <= 8) setStep(parsed);
       // Already in-progress — skip welcome screen
     } else {
       // Fresh session — show welcome
@@ -320,19 +330,15 @@ function EmployerOnboardingPage() {
   }, []);
 
   const handleNext = () => {
-    if (step === 1) {
-      const persona = derivePersona(data.setupFor, data.householdFocus, data.firstTimeEmployer);
-      track("onboarding_persona_shown", { persona: persona.name });
-      setShowPersonaCard(true);
-      return;
-    }
-    if (step === 6) {
-      // Segment 1: Mon/Tue/Wed — fires while user reads portrait cards on step 7
+    if (step === 1) { goToStep(1.5); return; }
+    if (step === 1.5) { goToStep(2); return; }
+    if (step === 5) {
+      // Segment 1: Mon/Tue/Wed — fires while user reads portrait cards on step 6
       setSeg1Result(null);
       setSeg1Error(false);
       triggerSegment(data, ["monday", "tuesday", "wednesday"], setSeg1Result, () => setSeg1Error(true));
     }
-    if (step === 7) {
+    if (step === 6) {
       // Segments 2+3 fire simultaneously as user enters the schedule editor
       setSeg2Result(null);
       setSeg3Result(null);
@@ -345,7 +351,11 @@ function EmployerOnboardingPage() {
     }
     goToStep(Math.min(step + 1, TOTAL_STEPS));
   };
-  const handleBack = () => goToStep(Math.max(step - 1, 1));
+  const handleBack = () => {
+    if (step === 1.5) { goToStep(1); return; }
+    if (step === 3.5) { goToStep(3); return; }
+    goToStep(Math.max(step - 1, 1));
+  };
   const handleStepClick = (targetStep: number) => {
     if (targetStep < step) goToStep(targetStep);
   };
@@ -410,21 +420,16 @@ function EmployerOnboardingPage() {
 
   const canProceed = () => {
     switch (step) {
-      case 1: return (
-        data.setupFor !== null &&
-        data.firstTimeEmployer !== null &&
-        data.householdFocus.length >= 1 &&
-        data.helperHasPhone !== null
-      );
-      case 2: return data.rooms.length > 0;
-      case 3: return data.members.length > 0;
-      case 4: return true; // daily life is optional
-      case 4.5: return true; // service prefs are optional
-      case 5: return data.helperExperience !== null;
-      case 6: return data.helperDetails !== null && (data.inviteCode !== "" || data.helperHasPhone === false);
-      case 7: return data.weeklyTasks !== null;
-      case 8: return (data.weeklyTasks?.length ?? 0) >= 7;
-      case 9: return true;
+      case 1: return data.rooms.length > 0;                  // Step1Household
+      case 1.5: return true;                                  // Step1bDeepClean (optional)
+      case 2: return data.members.length > 0;                // Step2Members
+      case 3: return true;                                    // Step4DailyLife (optional)
+      case 3.5: return true;                                  // Step4bServicePrefs (optional)
+      case 4: return data.helperExperience !== null;          // Step5Experience
+      case 5: return data.helperDetails !== null && (data.inviteCode !== "" || data.helperHasPhone === false); // Step7HelperDetails
+      case 6: return data.weeklyTasks !== null;               // Step8Review
+      case 7: return (data.weeklyTasks?.length ?? 0) >= 7;   // Step9ScheduleReview
+      case 8: return true;                                    // StepSignUp
       default: return false;
     }
   };
@@ -451,7 +456,6 @@ function EmployerOnboardingPage() {
     return (
       <FeatureHighlightScreen
         key="feature1"
-        icon={CalendarDays}
         title="AI-generated weekly schedule"
         body="Answer a few questions about your household and we'll generate a personalised task timetable in seconds. No spreadsheets. No whiteboards."
         image="/images/timetable3.png"
@@ -465,12 +469,179 @@ function EmployerOnboardingPage() {
     return (
       <FeatureHighlightScreen
         key="feature2"
-        icon={Smartphone}
         title="Your helper sees their tasks — you see their progress"
         body="Helpers mark tasks done from their phone. You get a live view from yours. No more 'did you do the laundry?' conversations."
         image="/images/helperview2.png"
         imageCrop="12%"
-        onContinue={() => setShowFeature2(false)}
+        onContinue={() => { setShowFeature2(false); setShowFeature3(true); }}
+      />
+    );
+  }
+
+  if (showSocialProof && hydrated) {
+    return <SocialProofScreen onContinue={() => { setShowSocialProof(false); setShowSurveyIntro(true); }} />;
+  }
+
+  if (showSurveyIntro && hydrated) {
+    return <SurveyIntroScreen onContinue={() => { setShowSurveyIntro(false); setSurveyStep(1); }} />;
+  }
+
+  if (surveyStep === 1 && hydrated) {
+    return (
+      <SurveyQuestionScreen
+        key="sq1"
+        question="Who are you setting this up for?"
+        options={[
+          { value: "own", emoji: "🏠", label: "My own home", sub: "I live where the helper works" },
+          { value: "family", emoji: "👵", label: "A family member's home", sub: "e.g. parents, in-laws, relatives" },
+        ]}
+        selected={data.setupFor}
+        onSelect={(v) => setData((d) => ({ ...d, setupFor: v as "own" | "family" }))}
+        onContinue={() => setSurveyStep(2)}
+        onBack={() => { setSurveyStep(0); setShowSurveyIntro(true); }}
+      />
+    );
+  }
+
+  if (surveyStep === 2 && hydrated) {
+    return (
+      <SurveyQuestionScreen
+        key="sq2"
+        question="Have you managed a helper before?"
+        options={[
+          { value: "experienced", emoji: "✅", label: "Yes, I've had helpers for years" },
+          { value: "stressful", emoji: "🌱", label: "Yes but I still find it stressful" },
+          { value: "new", emoji: "🆕", label: "No, this is my first time" },
+        ]}
+        selected={experienceAnswer}
+        onSelect={(v) => {
+          setExperienceAnswer(v);
+          setData((d) => ({ ...d, firstTimeEmployer: v === "new" }));
+        }}
+        onContinue={() => setSurveyStep(3)}
+        onBack={() => setSurveyStep(1)}
+      />
+    );
+  }
+
+  if (surveyStep === 3 && hydrated) {
+    return (
+      <SurveyQuestionScreen
+        key="sq3"
+        question="What does your household need most?"
+        options={[
+          { value: "meals", emoji: "🍳", label: "Meals & cooking" },
+          { value: "cleanliness", emoji: "🧹", label: "Cleaning & chores" },
+          { value: "childcare", emoji: "👶", label: "Childcare" },
+          { value: "elderlycare", emoji: "👴", label: "Elderly care" },
+          { value: "laundry", emoji: "👕", label: "Laundry" },
+          { value: "grocery", emoji: "🛒", label: "Errands & grocery" },
+        ]}
+        selected={data.householdFocus}
+        multiSelect
+        onSelect={(v) => setData((d) => {
+          const current = d.householdFocus as string[];
+          const next = current.includes(v) ? current.filter((x) => x !== v) : [...current, v];
+          return { ...d, householdFocus: next as Priority[] };
+        })}
+        onContinue={() => setSurveyStep(4)}
+        onBack={() => setSurveyStep(2)}
+      />
+    );
+  }
+
+  if (surveyStep === 4 && hydrated) {
+    const isNewUser = experienceAnswer === "new";
+    return isNewUser ? (
+      <SurveyQuestionScreen
+        key="sq4-new"
+        question="What worries you most about having a helper for the first time?"
+        options={[
+          { value: "trust", emoji: "🤝", label: "Trusting someone in my home" },
+          { value: "communication", emoji: "💬", label: "Explaining what I want clearly" },
+          { value: "routine", emoji: "📋", label: "Building a consistent routine" },
+          { value: "unsure", emoji: "🤷", label: "Not sure where to even start" },
+        ]}
+        selected={data.miscommunicationFrequency}
+        onSelect={(v) => setData((d) => ({ ...d, miscommunicationFrequency: v as MiscommunicationFrequency }))}
+        onContinue={() => setSurveyStep(5)}
+        onBack={() => setSurveyStep(3)}
+      />
+    ) : (
+      <SurveyQuestionScreen
+        key="sq4-experienced"
+        question="How often does miscommunication with your helper cause frustration?"
+        options={[
+          { value: "never", emoji: "😌", label: "Never — things run smoothly" },
+          { value: "sometimes", emoji: "🤔", label: "Sometimes — a few times a month" },
+          { value: "often", emoji: "😩", label: "Often — almost every week" },
+          { value: "always", emoji: "😤", label: "Constantly — it's a real problem" },
+        ]}
+        selected={data.miscommunicationFrequency}
+        onSelect={(v) => setData((d) => ({ ...d, miscommunicationFrequency: v as MiscommunicationFrequency }))}
+        onContinue={() => setSurveyStep(5)}
+        onBack={() => setSurveyStep(3)}
+      />
+    );
+  }
+
+  if (surveyStep === 5 && hydrated) {
+    const isNewUser = experienceAnswer === "new";
+    return isNewUser ? (
+      <SurveyQuestionScreen
+        key="sq5-new"
+        question="How much time do you spend managing household tasks yourself each week?"
+        options={[
+          { value: "under30", emoji: "⚡", label: "Under 30 minutes" },
+          { value: "30to60", emoji: "⏳", label: "30–60 minutes" },
+          { value: "over60", emoji: "😮‍💨", label: "Over an hour" },
+          { value: "toomuch", emoji: "🤯", label: "Way too much — it's exhausting" },
+        ]}
+        selected={data.timeReexplainingTasks}
+        onSelect={(v) => setData((d) => ({ ...d, timeReexplainingTasks: v as TimeReexplainingTasks }))}
+        onContinue={() => { setSurveyStep(0); setShowSurveyResult(true); }}
+        onBack={() => setSurveyStep(4)}
+      />
+    ) : (
+      <SurveyQuestionScreen
+        key="sq5-experienced"
+        question="How much time do you spend re-explaining tasks each week?"
+        options={[
+          { value: "under30", emoji: "⚡", label: "Under 30 minutes" },
+          { value: "30to60", emoji: "⏳", label: "30–60 minutes" },
+          { value: "over60", emoji: "😮‍💨", label: "Over an hour" },
+          { value: "toomuch", emoji: "🤯", label: "Way too much — it's exhausting" },
+        ]}
+        selected={data.timeReexplainingTasks}
+        onSelect={(v) => setData((d) => ({ ...d, timeReexplainingTasks: v as TimeReexplainingTasks }))}
+        onContinue={() => { setSurveyStep(0); setShowSurveyResult(true); }}
+        onBack={() => setSurveyStep(4)}
+      />
+    );
+  }
+
+  if (showFeature3 && hydrated) {
+    return (
+      <FeatureHighlightScreen
+        key="feature3"
+        title="Set it once. Run every week."
+        body="Schedules repeat automatically. You only intervene when something changes."
+        image="/images/recurring.png"
+        imageCrop="12%"
+        onContinue={() => { setShowFeature3(false); setShowSocialProof(true); }}
+      />
+    );
+  }
+
+  if (showSurveyResult && hydrated) {
+    return (
+      <SurveyResultScreen
+        setupFor={data.setupFor}
+        householdFocus={data.householdFocus}
+        experienceAnswer={experienceAnswer}
+        timeReexplainingTasks={data.timeReexplainingTasks}
+        miscommunicationFrequency={data.miscommunicationFrequency}
+        onContinue={() => setShowSurveyResult(false)}
       />
     );
   }
@@ -483,7 +654,7 @@ function EmployerOnboardingPage() {
         firstTimeEmployer={data.firstTimeEmployer}
         onContinue={() => {
           setShowPersonaCard(false);
-          goToStep(2);
+          goToStep(1);
         }}
       />
     );
@@ -495,7 +666,6 @@ function EmployerOnboardingPage() {
       totalSteps={TOTAL_STEPS}
       onStepClick={handleStepClick}
       stepLabels={[
-        "About You",
         "Your Home",
         "Your Household",
         "Daily Life",
@@ -505,13 +675,13 @@ function EmployerOnboardingPage() {
         "Review Schedule",
         "Confirm",
       ]}
-      onNext={step === 4
+      onNext={step === 3
         ? () => {
             const hasRoutines = Object.values(data.memberRoutines).some((v) => v?.trim());
             if (hasRoutines) {
               setShowStep4Reward(true);
             } else {
-              goToStep(5);
+              goToStep(4);
             }
           }
         : handleNext
@@ -519,47 +689,36 @@ function EmployerOnboardingPage() {
       onBack={handleBack}
       canProceed={canProceed()}
       isLastStep={step === TOTAL_STEPS}
-      wide={step === 8}
-      hideFooter={step === 8 || step === 9}
+      wide={step === 7}
+      hideFooter={step === 7 || step === 8}
     >
       {step === 1 && (
-        <Step0Qualification
-          data={{
-            setupFor: data.setupFor,
-            firstTimeEmployer: data.firstTimeEmployer,
-            householdFocus: data.householdFocus,
-            helperHasPhone: data.helperHasPhone,
-            miscommunicationFrequency: data.miscommunicationFrequency,
-            timeReexplainingTasks: data.timeReexplainingTasks,
-          }}
-          onUpdate={(updates) => {
-            updateData(updates);
-          }}
-        />
-      )}
-      {step === 2 && (
         <Step1Household
           rooms={data.rooms}
           homeName={data.homeName}
           homeDescription={data.homeDescription}
           homeSize={data.homeSize}
           setupFor={data.setupFor}
-          householdFocus={data.householdFocus}
-          deepCleanTasks={data.deepCleanTasks}
           onUpdate={(rooms, homeName, homeDescription, homeSize) =>
             updateData({ rooms, homeName, homeDescription, homeSize })
           }
-          onDeepCleanUpdate={(deepCleanTasks) => updateData({ deepCleanTasks })}
         />
       )}
-      {step === 3 && (
+      {step === 1.5 && (
+        <Step1bDeepClean
+          rooms={data.rooms}
+          deepCleanTasks={data.deepCleanTasks}
+          onUpdate={(deepCleanTasks) => updateData({ deepCleanTasks })}
+        />
+      )}
+      {step === 2 && (
         <Step2Members
           members={data.members}
           setupFor={data.setupFor}
           onUpdate={(members) => updateData({ members })}
         />
       )}
-      {step === 4 && (
+      {step === 3 && (
         <Step4DailyLife
           members={data.members}
           memberRoutines={data.memberRoutines}
@@ -571,26 +730,26 @@ function EmployerOnboardingPage() {
             updateData({ memberRoutines: routines, memberSchedules: schedules })
           }
           onQuietHoursUpdate={(memberQuietHours) => updateData({ memberQuietHours })}
-          onComplete={() => { setShowStep4Reward(false); goToStep(4.5); }}
+          onComplete={() => { setShowStep4Reward(false); goToStep(3.5); }}
         />
       )}
-      {step === 4.5 && (
+      {step === 3.5 && (
         <Step4bServicePrefs
           members={data.members}
           householdFocus={data.householdFocus}
           servicePrefs={data.servicePrefs}
           onUpdate={(servicePrefs) => updateData({ servicePrefs })}
-          onComplete={() => goToStep(5)}
+          onComplete={() => goToStep(4)}
         />
       )}
-      {step === 5 && (
+      {step === 4 && (
         <Step5Experience
           experience={data.helperExperience}
           pace={data.helperPace}
           onUpdate={(helperExperience, helperPace) => updateData({ helperExperience, helperPace })}
         />
       )}
-      {step === 6 && (
+      {step === 5 && (
         <Step7HelperDetails
           helperDetails={data.helperDetails}
           inviteCode={data.inviteCode}
@@ -605,7 +764,7 @@ function EmployerOnboardingPage() {
           }
         />
       )}
-      {step === 7 && (
+      {step === 6 && (
         <Step8Review
           data={data}
           preGenResult={seg1Result}
@@ -621,12 +780,12 @@ function EmployerOnboardingPage() {
           }}
         />
       )}
-      {step === 8 && data.weeklyTasks && (
+      {step === 7 && data.weeklyTasks && (
         <Step9ScheduleReview
           weeklyTasks={data.weeklyTasks}
           rooms={data.rooms}
           onUpdate={(tasks) => updateData({ weeklyTasks: tasks })}
-          onComplete={() => goToStep(9)}
+          onComplete={() => goToStep(8)}
           seg2Result={seg2Result}
           seg3Result={seg3Result}
           seg23Error={seg23Error}
@@ -653,7 +812,7 @@ function EmployerOnboardingPage() {
           }}
         />
       )}
-      {step === 9 && (
+      {step === 8 && (
         <StepSignUp onComplete={handleComplete} />
       )}
     </WizardShell>
