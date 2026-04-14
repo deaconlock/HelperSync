@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAnalytics } from "@/hooks/useAnalytics";
+import { FirstRunModal } from "@/components/dashboard/FirstRunModal";
 import { useQuery } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { api } from "../../../convex/_generated/api";
@@ -69,6 +71,18 @@ function ProgressRing({
 }
 
 export default function DashboardPage() {
+  const { track } = useAnalytics();
+  useEffect(() => { track("dashboard_visited", {}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [showFirstRun, setShowFirstRun] = useState(false);
+  useEffect(() => {
+    if (!localStorage.getItem("helpersync-first-run-seen")) {
+      setShowFirstRun(true);
+    }
+  }, []);
+  const dismissFirstRun = () => {
+    localStorage.setItem("helpersync-first-run-seen", "1");
+    setShowFirstRun(false);
+  };
   const { openAi } = useAi();
   const { user } = useUser();
   const [expandedPhoto, setExpandedPhoto] = useState<string | null>(null);
@@ -114,6 +128,8 @@ export default function DashboardPage() {
   const completedTasks = todayTasks.filter((t) => completedIds.has(t.taskId));
 
   return (
+    <>
+    {showFirstRun && <FirstRunModal onDismiss={dismissFirstRun} />}
     <div className="max-w-2xl mx-auto space-y-5 animate-fade-in-up">
       {/* Greeting */}
       <div>
@@ -144,15 +160,15 @@ export default function DashboardPage() {
             <div className="grid grid-cols-3 gap-2">
               <div className="text-center">
                 <p className="text-xl font-semibold text-gray-900">{todayTasks.length}</p>
-                <p className="text-[10px] text-text-muted uppercase tracking-wide">Total</p>
+                <p className="text-xs text-text-muted uppercase tracking-wide">Total</p>
               </div>
               <div className="text-center">
                 <p className="text-xl font-semibold text-green-600">{completed}</p>
-                <p className="text-[10px] text-text-muted uppercase tracking-wide">Done</p>
+                <p className="text-xs text-text-muted uppercase tracking-wide">Done</p>
               </div>
               <div className="text-center">
                 <p className="text-xl font-semibold text-amber-500">{pending}</p>
-                <p className="text-[10px] text-text-muted uppercase tracking-wide">Pending</p>
+                <p className="text-xs text-text-muted uppercase tracking-wide">Pending</p>
               </div>
             </div>
             {withPhoto > 0 && (
@@ -202,7 +218,7 @@ export default function DashboardPage() {
                       )}
                       <div className="text-center">
                         <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                        <p className="text-[10px] text-gray-400">
+                        <p className="text-xs text-gray-400">
                           {format(new Date(log.completedAt), "h:mma")}
                         </p>
                       </div>
@@ -283,7 +299,7 @@ export default function DashboardPage() {
                       {task.category && (
                         <>
                           <span className="text-gray-200">·</span>
-                          <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-text-secondary rounded-full font-medium">
+                          <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-text-secondary rounded-full font-medium">
                             {task.category}
                           </span>
                         </>
@@ -396,5 +412,6 @@ export default function DashboardPage() {
         </div>
       )}
     </div>
+    </>
   );
 }

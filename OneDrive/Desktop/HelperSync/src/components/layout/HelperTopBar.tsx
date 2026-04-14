@@ -15,7 +15,7 @@ export function HelperTopBar({ showBackToDashboard = false }: { showBackToDashbo
   return (
     <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
       <div>
-        <Logo size="sm" />
+        <Logo size="sm" href="/helper" />
         <p className="text-xs text-gray-400 mt-0.5">{format(new Date(), "EEEE, d MMMM")}</p>
       </div>
       <div className="flex items-center gap-2">

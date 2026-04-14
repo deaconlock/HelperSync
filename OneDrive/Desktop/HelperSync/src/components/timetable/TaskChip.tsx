@@ -57,7 +57,7 @@ export function TaskChip({ id, task, onEdit }: TaskChipProps) {
               {task.time}
             </p>
             <p className="text-xs font-medium truncate leading-tight">{task.taskName}</p>
-            <p className="text-[10px] text-text-muted mt-0.5">{task.area}</p>
+            <p className="text-xs text-text-muted mt-0.5">{task.area}</p>
           </div>
           {task.requiresPhoto && (
             <Camera className="w-3 h-3 text-text-muted flex-shrink-0 mt-1" />

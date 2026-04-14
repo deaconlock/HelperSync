@@ -174,7 +174,7 @@ export function AddTaskDialog({
               rows={2}
               className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none transition-colors"
             />
-            <p className="text-[10px] text-gray-400 mt-0.5">Shows every time this task appears</p>
+            <p className="text-xs text-gray-400 mt-0.5">Shows every time this task appears</p>
           </div>
 
           <div className="flex gap-4">

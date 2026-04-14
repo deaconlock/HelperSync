@@ -193,7 +193,7 @@ export function LiveDayColumn({
                   <span className="ml-1 text-[9px] text-gray-400 font-normal">one-off</span>
                 )}
               </p>
-              <p className="text-[10px] opacity-60">{task.time}</p>
+              <p className="text-xs opacity-60">{task.time}</p>
             </div>
             <div className="flex items-center gap-0.5 flex-shrink-0">
               {hasInstruction && (
@@ -262,18 +262,29 @@ export function LiveDayColumn({
           >
             {format(date, "EEE")}
           </span>
-          <span
-            className={cn(
-              "text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full",
-              isToday
-                ? "bg-gray-900 text-white"
-                : "text-text-muted"
+          <div className="flex items-center gap-1">
+            {onAddOneOff && (
+              <button
+                onClick={onAddOneOff}
+                title="Add one-off task"
+                className="w-5 h-5 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                <Plus className="w-3 h-3" />
+              </button>
             )}
-          >
-            {format(date, "d")}
-          </span>
+            <span
+              className={cn(
+                "text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full",
+                isToday
+                  ? "bg-gray-900 text-white"
+                  : "text-text-muted"
+              )}
+            >
+              {format(date, "d")}
+            </span>
+          </div>
         </div>
-        <p className="text-[10px] text-text-muted mt-0.5">{format(date, "MMM yyyy")}</p>
+        <p className="text-xs text-text-muted mt-0.5">{format(date, "MMM yyyy")}</p>
 
         {/* Progress bar */}
         {!dayOff && tasks.length > 0 && (
@@ -287,7 +298,7 @@ export function LiveDayColumn({
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="text-[10px] text-text-muted mt-0.5">
+            <p className="text-xs text-text-muted mt-0.5">
               {completedCount}/{tasks.length}
             </p>
           </div>
@@ -308,7 +319,7 @@ export function LiveDayColumn({
                 : "Leave"}
           </p>
           {dayOff.note && (
-            <p className="text-[10px] text-gray-400 mt-0.5">{dayOff.note}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{dayOff.note}</p>
           )}
         </div>
       ) : (
@@ -387,7 +398,7 @@ export function LiveDayColumn({
 
             {tasks.length === 0 && (
               <div className="flex-1 flex items-center justify-center py-4">
-                <p className="text-[10px] text-gray-300">No tasks</p>
+                <p className="text-xs text-gray-300">No tasks</p>
               </div>
             )}
 
@@ -395,7 +406,7 @@ export function LiveDayColumn({
             {onAddOneOff && (
               <button
                 onClick={onAddOneOff}
-                className="mt-1 w-full flex items-center justify-center gap-1 py-1.5 rounded-xl border border-dashed border-gray-200 text-text-muted hover:border-gray-400 hover:text-text-secondary text-[10px] transition-all duration-200"
+                className="mt-1 w-full flex items-center justify-center gap-1 py-1.5 rounded-xl border border-dashed border-gray-200 text-text-muted hover:border-gray-400 hover:text-text-secondary text-xs transition-all duration-200"
               >
                 <Plus className="w-2.5 h-2.5" /> Add
               </button>

@@ -52,7 +52,7 @@ export function EmergencyInfoCard({ elderlyMembers }: EmergencyInfoCardProps) {
                   {member.age ? <span className="text-gray-400 font-normal ml-1">({member.age}y)</span> : null}
                 </p>
                 {member.mobilityLevel && member.mobilityLevel !== "independent" && (
-                  <span className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-medium">
+                  <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-medium">
                     {member.mobilityLevel.replace(/_/g, " ")}
                   </span>
                 )}

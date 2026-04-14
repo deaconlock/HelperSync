@@ -47,7 +47,7 @@ export function DayColumn({
       {/* Day header */}
       <div className="flex items-center justify-between mb-2 px-1">
         <span className="text-xs font-medium text-text-secondary">{label}</span>
-        <span className="text-[10px] text-text-muted">{tasks.length}</span>
+        <span className="text-xs text-text-muted">{tasks.length}</span>
       </div>
 
       {/* Tasks */}

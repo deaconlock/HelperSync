@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useAnalytics } from "@/hooks/useAnalytics";
+import { derivePersona } from "@/components/onboarding/PersonaCard";
 import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
@@ -10,6 +12,7 @@ import { Step0Qualification } from "@/components/onboarding/steps/Step0Qualifica
 import { Step1Household } from "@/components/onboarding/steps/Step1Household";
 import { Step2Members } from "@/components/onboarding/steps/Step2Members";
 import { Step4DailyLife } from "@/components/onboarding/steps/Step4DailyLife";
+import { Step4bServicePrefs } from "@/components/onboarding/steps/Step4bServicePrefs";
 import { Step5Experience } from "@/components/onboarding/steps/Step5Experience";
 import { Step7HelperDetails } from "@/components/onboarding/steps/Step7HelperDetails";
 import { Step8Review } from "@/components/onboarding/steps/Step8Review";
@@ -17,6 +20,10 @@ import { Step9ScheduleReview } from "@/components/onboarding/steps/Step9Schedule
 import { StepSignUp } from "@/components/onboarding/steps/StepSignUp";
 import { createInviteData } from "@/lib/invite";
 import { PersonaCard } from "@/components/onboarding/PersonaCard";
+import { WelcomeScreen } from "@/components/onboarding/WelcomeScreen";
+import { ReaffirmScreen } from "@/components/onboarding/ReaffirmScreen";
+import { FeatureHighlightScreen } from "@/components/onboarding/FeatureHighlightScreen";
+import { CalendarDays, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@clerk/nextjs";
 import { useConvexAuth } from "convex/react";
@@ -40,6 +47,8 @@ export type HelperPace = "relaxed" | "balanced" | "intensive";
 export type HomeSize = "compact" | "midsize" | "spacious";
 
 export type SetupFor = "own" | "family";
+export type MiscommunicationFrequency = "never" | "sometimes" | "often" | "always";
+export type TimeReexplainingTasks = "under30" | "30to60" | "over60";
 
 export interface WizardData {
   // Qualifying questions (Step 1)
@@ -47,6 +56,8 @@ export interface WizardData {
   firstTimeEmployer: boolean | null;
   householdFocus: Priority[];
   helperHasPhone: boolean | null;
+  miscommunicationFrequency: MiscommunicationFrequency | null;
+  timeReexplainingTasks: TimeReexplainingTasks | null;
   homeName: string;
   homeDescription: string;
   homeSize: HomeSize;
@@ -58,6 +69,7 @@ export interface WizardData {
   memberRoutines: Record<string, string>;
   memberSchedules: Record<string, DayAvailability>;
   memberQuietHours: Record<string, string>;
+  servicePrefs: Record<string, string[]>;
   helperExperience: HelperExperience | null;
   helperPace: HelperPace;
   employerAvailability: DayAvailability | null; // derived from memberSchedules for Convex
@@ -83,6 +95,8 @@ const initialData: WizardData = {
   firstTimeEmployer: null,
   householdFocus: [],
   helperHasPhone: null,
+  miscommunicationFrequency: null,
+  timeReexplainingTasks: null,
   homeName: "",
   homeDescription: "",
   homeSize: "midsize",
@@ -94,6 +108,7 @@ const initialData: WizardData = {
   memberRoutines: {},
   memberSchedules: {},
   memberQuietHours: {},
+  servicePrefs: {},
   helperExperience: null,
   helperPace: "balanced",
   employerAvailability: null,
@@ -119,6 +134,10 @@ function EmployerOnboardingPage() {
   const [step, setStep] = useState(1);
   const [data, setData] = useState<WizardData>(initialData);
   const [hydrated, setHydrated] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [showReaffirm, setShowReaffirm] = useState(false);
+  const [showFeature1, setShowFeature1] = useState(false);
+  const [showFeature2, setShowFeature2] = useState(false);
   const [showPersonaCard, setShowPersonaCard] = useState(false);
   const [showStep4Reward, setShowStep4Reward] = useState(false);
   const [seg1Result, setSeg1Result] = useState<DayTasks[] | null>(null);
@@ -128,6 +147,22 @@ function EmployerOnboardingPage() {
   const [seg23Error, setSeg23Error] = useState(false);
   const [completingRef] = useState({ called: false });
   const seg23TimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stepEnterTimeRef = useRef<number>(Date.now());
+
+  const { track } = useAnalytics();
+
+  const STEP_NAMES: Record<number, string> = {
+    1: "Qualification",
+    2: "Home Setup",
+    3: "Members",
+    4: "Daily Life",
+    4.5: "Service Prefs",
+    5: "Helper Experience",
+    6: "Helper Details",
+    7: "Schedule",
+    8: "Review",
+    9: "Sign Up",
+  };
 
   const DAY_ORDER = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
@@ -147,6 +182,16 @@ function EmployerOnboardingPage() {
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Track initial step view after hydration
+  useEffect(() => {
+    if (!hydrated) return;
+    stepEnterTimeRef.current = Date.now();
+    track("onboarding_step_viewed", {
+      step,
+      stepName: STEP_NAMES[step] ?? String(step),
+    });
+  }, [hydrated]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Restore saved wizard state and step after hydration to avoid SSR mismatch
   useEffect(() => {
     const saved = localStorage.getItem("helpersync-wizard");
@@ -161,6 +206,10 @@ function EmployerOnboardingPage() {
     if (savedStep) {
       const parsed = parseInt(savedStep, 10);
       if (parsed >= 1 && parsed <= 9) setStep(parsed);
+      // Already in-progress — skip welcome screen
+    } else {
+      // Fresh session — show welcome
+      setShowWelcome(true);
     }
     setHydrated(true);
   }, []);
@@ -194,8 +243,20 @@ function EmployerOnboardingPage() {
   }, []);
 
   const goToStep = (s: number) => {
+    // Track time spent on outgoing step
+    const timeOnStep = Math.round((Date.now() - stepEnterTimeRef.current) / 1000);
+    track("onboarding_step_completed", {
+      step,
+      stepName: STEP_NAMES[step] ?? String(step),
+      timeOnStepSeconds: timeOnStep,
+    });
+    stepEnterTimeRef.current = Date.now();
     setStep(s);
     localStorage.setItem("helpersync-wizard-step", String(s));
+    track("onboarding_step_viewed", {
+      step: s,
+      stepName: STEP_NAMES[s] ?? String(s),
+    });
   };
 
   const triggerSegment = useCallback(async (
@@ -216,6 +277,7 @@ function EmployerOnboardingPage() {
           memberRoutines: d.memberRoutines,
           memberQuietHours: d.memberQuietHours,
           priorities: d.priorities,
+          servicePrefs: d.servicePrefs,
           helperExperience: d.helperExperience,
           helperPace: d.helperPace,
           homeSize: d.homeSize,
@@ -259,6 +321,8 @@ function EmployerOnboardingPage() {
 
   const handleNext = () => {
     if (step === 1) {
+      const persona = derivePersona(data.setupFor, data.householdFocus, data.firstTimeEmployer);
+      track("onboarding_persona_shown", { persona: persona.name });
       setShowPersonaCard(true);
       return;
     }
@@ -331,6 +395,11 @@ function EmployerOnboardingPage() {
 
       localStorage.removeItem("helpersync-wizard");
       localStorage.removeItem("helpersync-wizard-step");
+      const persona = derivePersona(d.setupFor, d.householdFocus, d.firstTimeEmployer);
+      track("onboarding_completed", {
+        totalTimeSeconds: Math.round((Date.now() - stepEnterTimeRef.current) / 1000),
+        persona: persona.name,
+      });
       toast.success("Household set up successfully!");
       router.push("/dashboard");
     } catch (err) {
@@ -350,6 +419,7 @@ function EmployerOnboardingPage() {
       case 2: return data.rooms.length > 0;
       case 3: return data.members.length > 0;
       case 4: return true; // daily life is optional
+      case 4.5: return true; // service prefs are optional
       case 5: return data.helperExperience !== null;
       case 6: return data.helperDetails !== null && (data.inviteCode !== "" || data.helperHasPhone === false);
       case 7: return data.weeklyTasks !== null;
@@ -366,6 +436,42 @@ function EmployerOnboardingPage() {
         <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
         <p className="text-sm text-text-muted">Setting up your household...</p>
       </div>
+    );
+  }
+
+  if (showWelcome && hydrated) {
+    return <WelcomeScreen onStart={() => { setShowWelcome(false); setShowReaffirm(true); }} />;
+  }
+
+  if (showReaffirm && hydrated) {
+    return <ReaffirmScreen onContinue={() => { setShowReaffirm(false); setShowFeature1(true); }} />;
+  }
+
+  if (showFeature1 && hydrated) {
+    return (
+      <FeatureHighlightScreen
+        key="feature1"
+        icon={CalendarDays}
+        title="AI-generated weekly schedule"
+        body="Answer a few questions about your household and we'll generate a personalised task timetable in seconds. No spreadsheets. No whiteboards."
+        image="/images/timetable3.png"
+        imageCrop="12%"
+        onContinue={() => { setShowFeature1(false); setShowFeature2(true); }}
+      />
+    );
+  }
+
+  if (showFeature2 && hydrated) {
+    return (
+      <FeatureHighlightScreen
+        key="feature2"
+        icon={Smartphone}
+        title="Your helper sees their tasks — you see their progress"
+        body="Helpers mark tasks done from their phone. You get a live view from yours. No more 'did you do the laundry?' conversations."
+        image="/images/helperview2.png"
+        imageCrop="12%"
+        onContinue={() => setShowFeature2(false)}
+      />
     );
   }
 
@@ -423,6 +529,8 @@ function EmployerOnboardingPage() {
             firstTimeEmployer: data.firstTimeEmployer,
             householdFocus: data.householdFocus,
             helperHasPhone: data.helperHasPhone,
+            miscommunicationFrequency: data.miscommunicationFrequency,
+            timeReexplainingTasks: data.timeReexplainingTasks,
           }}
           onUpdate={(updates) => {
             updateData(updates);
@@ -463,7 +571,16 @@ function EmployerOnboardingPage() {
             updateData({ memberRoutines: routines, memberSchedules: schedules })
           }
           onQuietHoursUpdate={(memberQuietHours) => updateData({ memberQuietHours })}
-          onComplete={() => { setShowStep4Reward(false); goToStep(5); }}
+          onComplete={() => { setShowStep4Reward(false); goToStep(4.5); }}
+        />
+      )}
+      {step === 4.5 && (
+        <Step4bServicePrefs
+          members={data.members}
+          householdFocus={data.householdFocus}
+          servicePrefs={data.servicePrefs}
+          onUpdate={(servicePrefs) => updateData({ servicePrefs })}
+          onComplete={() => goToStep(5)}
         />
       )}
       {step === 5 && (

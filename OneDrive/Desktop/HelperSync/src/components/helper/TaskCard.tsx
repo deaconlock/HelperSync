@@ -120,7 +120,7 @@ export function TaskCard({ task, isDone, householdId, date, translatedName, read
         <div className="mx-4 mb-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
           <p className="text-xs font-medium text-blue-700 leading-relaxed">{dailyInstruction.instruction}</p>
           {permanentNotes && (
-            <p className="text-[10px] text-blue-500/70 mt-1 italic">{permanentNotes}</p>
+            <p className="text-xs text-blue-500/70 mt-1 italic">{permanentNotes}</p>
           )}
           {dailyInstruction.photoUrl && (
             <img

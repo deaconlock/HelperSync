@@ -99,7 +99,7 @@ export default function SubscribePage() {
               "Subscribe now"
             )}
           </button>
-          <p className="text-[10px] text-text-muted text-center mt-2">
+          <p className="text-xs text-text-muted text-center mt-2">
             Cancel anytime. No long-term commitment.
           </p>
         </div>

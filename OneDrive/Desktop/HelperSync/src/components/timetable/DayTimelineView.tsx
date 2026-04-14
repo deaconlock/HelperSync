@@ -201,7 +201,7 @@ export function DayTimelineView({
                 style={{ top: i * HOUR_HEIGHT }}
               >
                 <div className="w-14 flex-shrink-0 text-right pr-2 -mt-2">
-                  <span className="text-[10px] text-gray-400 font-medium">
+                  <span className="text-xs text-gray-400 font-medium">
                     {formatTimeLabel(hour)}
                   </span>
                 </div>
@@ -291,7 +291,7 @@ export function DayTimelineView({
                         {task.taskName}
                       </p>
                       {height >= 40 && (
-                        <p className="text-[10px] opacity-60 truncate">
+                        <p className="text-xs opacity-60 truncate">
                           {minutesToTime(taskMinutes)} – {minutesToTime(taskMinutes + taskDuration)}
                         </p>
                       )}

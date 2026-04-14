@@ -64,7 +64,7 @@ export function DaySelectorStrip({ selectedDate, onSelect, completionMap }: DayS
           >
             {/* Day name */}
             <span className={cn(
-              "text-[10px] uppercase tracking-wide",
+              "text-xs uppercase tracking-wide",
               isSelected ? "text-white/80" : "text-text-muted"
             )}>
               {item.dayName}
@@ -80,7 +80,7 @@ export function DaySelectorStrip({ selectedDate, onSelect, completionMap }: DayS
 
             {/* Month */}
             <span className={cn(
-              "text-[10px]",
+              "text-xs",
               isSelected ? "text-white/70" : "text-text-muted"
             )}>
               {item.month}

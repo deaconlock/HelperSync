@@ -172,7 +172,7 @@ export function Step6Review({ data, onTimetableGenerated }: Step6Props) {
             {PROGRESS_STEPS.map((label, i) => (
               <div
                 key={i}
-                className={`flex items-center gap-1.5 text-[10px] px-2 py-1.5 rounded-lg transition-all duration-300 ${
+                className={`flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-lg transition-all duration-300 ${
                   i <= progressStep
                     ? "bg-primary/10 text-primary"
                     : "bg-gray-50 text-gray-400"

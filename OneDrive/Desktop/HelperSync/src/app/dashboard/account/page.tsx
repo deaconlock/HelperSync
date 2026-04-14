@@ -146,7 +146,7 @@ export default function AccountPage() {
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Subscribe Now"}
               </button>
-              <p className="text-[10px] text-text-muted text-center mt-2">
+              <p className="text-xs text-text-muted text-center mt-2">
                 You won&apos;t be charged until your trial ends. Cancel anytime.
               </p>
             </>

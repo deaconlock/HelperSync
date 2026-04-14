@@ -27,6 +27,34 @@ function buildClientSummary(data: WizardData): string {
   return `I built ${helperName}'s week around ${priorityStr}${careNote}. Each day has a different focus to avoid repetition, and I've spread tasks across the full day with proper breaks. This is ${paceNote} tailored to your home.`;
 }
 
+function buildWhatIncluded(data: WizardData): string[] {
+  const bullets: string[] = [];
+  const priorities = data.priorities.map((p) => PRIORITY_LABELS[p] ?? p);
+  if (priorities.length > 0) {
+    bullets.push(`Daily tasks focused on: ${priorities.slice(0, 3).join(", ")}`);
+  }
+  const roomList = data.rooms.slice(0, 4).join(", ");
+  if (roomList) bullets.push(`Rooms covered: ${roomList}`);
+  const childCount = data.members.filter((m) => ["Baby", "Young Child", "School Child"].includes(m.role)).length;
+  const elderlyCount = data.members.filter((m) => m.role === "Elderly").length;
+  if (childCount > 0) bullets.push(`Childcare routines for ${childCount} child${childCount > 1 ? "ren" : ""}`);
+  if (elderlyCount > 0) bullets.push(`Elderly care checkpoints for ${elderlyCount} member${elderlyCount > 1 ? "s" : ""}`);
+  const paceLabel = data.helperPace === "intensive" ? "intensive (8–9 hrs)" : data.helperPace === "relaxed" ? "relaxed (5–6 hrs)" : "balanced (6–7 hrs)";
+  bullets.push(`Work pace: ${paceLabel} per day`);
+  return bullets;
+}
+
+function buildNotIncluded(data: WizardData): string[] {
+  const out: string[] = [];
+  const allPriorities = ["meals","cleanliness","childcare","elderlycare","laundry","grocery","organizing"];
+  const missing = allPriorities.filter((p) => !data.priorities.includes(p as typeof data.priorities[0]));
+  if (missing.includes("grocery")) out.push("Grocery shopping (not in your priorities)");
+  if (missing.includes("laundry")) out.push("Laundry & ironing (not in your priorities)");
+  if (missing.includes("organizing")) out.push("Organising & decluttering (not in your priorities)");
+  out.push("Deep cleans — those are scheduled separately");
+  return out.slice(0, 3);
+}
+
 // Labels that cycle during the passive progress animation
 const PROGRESS_LABELS = [
   "Analyzing your home layout...",
@@ -269,10 +297,36 @@ export function Step8Review({
               transition={{ delay: 0.2 }}
               className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-2"
             >
-              <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">
+              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">
                 Here&apos;s what I built
               </p>
               <p className="text-sm text-white/75 leading-relaxed italic">{buildClientSummary(data)}</p>
+            </motion.div>
+
+            {/* What's included */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3"
+            >
+              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">
+                What your helper will do
+              </p>
+              <ul className="space-y-1.5">
+                {buildWhatIncluded(data).map((b) => (
+                  <li key={b} className="flex items-start gap-2 text-sm text-white/70">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    {b}
+                  </li>
+                ))}
+              </ul>
+              <div className="border-t border-white/10 pt-3 space-y-1.5">
+                <p className="text-xs font-semibold text-white/30 uppercase tracking-wider">Not included</p>
+                {buildNotIncluded(data).map((b) => (
+                  <p key={b} className="text-xs text-white/40 pl-5">· {b}</p>
+                ))}
+              </div>
             </motion.div>
 
             {/* Week at a glance */}
@@ -283,7 +337,7 @@ export function Step8Review({
                 transition={{ delay: 0.35 }}
                 className="space-y-2"
               >
-                <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">
+                <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">
                   Week at a glance
                 </p>
                 <WeekStrip
@@ -291,7 +345,7 @@ export function Step8Review({
                   pending={data.weeklyTasks.length < 7}
                 />
                 {data.weeklyTasks.length < 7 && (
-                  <p className="text-[10px] text-white/30 text-center">
+                  <p className="text-xs text-white/30 text-center">
                     Thu–Sun loading in the background...
                   </p>
                 )}
@@ -305,8 +359,14 @@ export function Step8Review({
               transition={{ delay: 0.45 }}
               className="flex flex-col items-center gap-3 mt-auto pt-2"
             >
+              <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <p className="text-xs text-white/60 leading-snug">
+                  Your helper receives this exact plan — every task, time slot, and instruction.
+                </p>
+              </div>
               <p className="text-xs text-white/40 text-center">
-                Hit <strong className="text-white/60">Continue</strong> below to review and edit the full schedule
+                Hit <strong className="text-white/60">Continue</strong> to review and edit before saving
               </p>
               <button
                 onClick={onRetry}

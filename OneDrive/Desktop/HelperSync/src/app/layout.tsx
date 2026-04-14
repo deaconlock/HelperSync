@@ -4,6 +4,7 @@ import { ConvexClientProvider } from "@/components/providers/ConvexClientProvide
 import { ThemeProvider } from "@/lib/theme-context";
 import { Toaster } from "sonner";
 import { DevResetButton } from "@/components/layout/DevResetButton";
+import { PostHogProvider } from "@/components/providers/PostHogProvider";
 import { Plus_Jakarta_Sans, Inter } from "next/font/google";
 import "./globals.css";
 
@@ -41,9 +42,11 @@ export default function RootLayout({
         <body className={`${inter.variable} ${jakarta.variable} bg-background dark:bg-gray-950 antialiased font-sans`}>
           <ThemeProvider>
             <ConvexClientProvider>
-              {children}
-              <Toaster position="top-right" richColors />
-              <DevResetButton />
+              <PostHogProvider>
+                {children}
+                <Toaster position="top-right" richColors />
+                <DevResetButton />
+              </PostHogProvider>
             </ConvexClientProvider>
           </ThemeProvider>
         </body>

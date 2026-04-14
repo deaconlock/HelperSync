@@ -32,7 +32,9 @@ export function WizardShell({
   hideFooter,
   children,
 }: WizardShellProps) {
-  const currentLabel = stepLabels?.[step - 1];
+  const currentStep = Math.floor(step); // handle step 4.5
+  const currentLabel = stepLabels?.[currentStep - 1];
+  const nextLabel = stepLabels?.[currentStep]; // index = currentStep (0-based next)
   const contentMaxW = wide ? "max-w-6xl" : "max-w-xl";
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -48,7 +50,7 @@ export function WizardShell({
                 </p>
               )}
               <span className="text-xs text-text-muted">
-                Step {step} of {totalSteps}
+                Step {currentStep} of {totalSteps}
               </span>
             </div>
           </div>
@@ -57,8 +59,8 @@ export function WizardShell({
           <div className="flex gap-1">
             {Array.from({ length: totalSteps }).map((_, i) => {
               const stepNum = i + 1;
-              const isPast = stepNum < step;
-              const isCurrent = stepNum === step;
+              const isPast = stepNum < currentStep;
+              const isCurrent = stepNum === currentStep;
               if (isPast) {
                 return (
                   <button
@@ -80,12 +82,21 @@ export function WizardShell({
               );
             })}
           </div>
+          {nextLabel && !isLastStep && (
+            <p className="text-xs text-text-muted mt-1.5">
+              Next: <span className="font-medium text-gray-600">{nextLabel}</span>
+            </p>
+          )}
         </div>
       </header>
 
       {/* Content */}
       <main className="flex-1 overflow-y-auto">
-        <div className={cn(contentMaxW, "mx-auto px-4 py-10")}>{children}</div>
+        <div className={cn(contentMaxW, "mx-auto px-4 py-10")}>
+          <div key={step} style={{ animation: "screen-fade-in 0.4s ease-out both" }}>
+            {children}
+          </div>
+        </div>
       </main>
 
       {/* Footer navigation */}

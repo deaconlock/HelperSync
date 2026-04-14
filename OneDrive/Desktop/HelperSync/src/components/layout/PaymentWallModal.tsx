@@ -106,7 +106,7 @@ export function PaymentWallModal({ householdId, daysLeft }: PaymentWallModalProp
               "Add payment details"
             )}
           </button>
-          <p className="text-[10px] text-text-muted text-center mt-2">
+          <p className="text-xs text-text-muted text-center mt-2">
             You won&apos;t be charged until your trial ends. Cancel anytime.
           </p>
         </div>

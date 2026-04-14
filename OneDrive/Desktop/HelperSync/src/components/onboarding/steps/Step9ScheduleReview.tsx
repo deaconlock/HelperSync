@@ -272,7 +272,7 @@ function buildDaySlides(
           {/* Focus theme */}
           <StaggerChild delay={0.05}>
             <div className="rounded-xl bg-white/10 border border-white/15 px-4 py-3">
-              <p className="text-[10px] text-white/40 uppercase tracking-wider font-medium mb-1">Focus</p>
+              <p className="text-xs text-white/40 uppercase tracking-wider font-medium mb-1">Focus</p>
               <p className="text-sm font-semibold text-white/90">{theme}</p>
             </div>
           </StaggerChild>
@@ -281,7 +281,7 @@ function buildDaySlides(
           {specialTasks.length > 0 && (
             <StaggerChild delay={0.2}>
               <div>
-                <p className="text-[10px] text-white/40 uppercase tracking-wider font-medium mb-2">Notable tasks</p>
+                <p className="text-xs text-white/40 uppercase tracking-wider font-medium mb-2">Notable tasks</p>
                 <div className="space-y-2">
                   {specialTasks.map((task) => (
                     <div key={task.taskId} className="flex items-center gap-3">
@@ -307,12 +307,12 @@ function buildDaySlides(
               {categories.map((cat) => (
                 <span
                   key={cat}
-                  className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/60"
+                  className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/60"
                 >
                   {CATEGORY_EMOJIS[cat] ?? "📋"} {cat}
                 </span>
               ))}
-              <span className="text-[10px] text-white/30 ml-auto">{totalWork} tasks</span>
+              <span className="text-xs text-white/30 ml-auto">{totalWork} tasks</span>
             </div>
           </StaggerChild>
         </div>
@@ -355,7 +355,7 @@ function SlideFeedbackInput({
   return (
     <StaggerChild delay={0.5}>
       <div className="border-t border-white/10 pt-4 mt-6">
-        <p className="text-[10px] text-white/40 uppercase tracking-wider font-medium mb-2">
+        <p className="text-xs text-white/40 uppercase tracking-wider font-medium mb-2">
           Any feedback for this plan?
         </p>
         <motion.div
@@ -530,7 +530,7 @@ function FinalSlide({
                 transition={{ duration: 0.5, ease: "easeOut" }}
               />
             </div>
-            <p className="text-[10px] text-text-muted text-right mt-1">
+            <p className="text-xs text-text-muted text-right mt-1">
               {Math.round(progressPercent)}%
             </p>
           </div>
@@ -590,12 +590,12 @@ function FinalSlide({
             {/* Consolidated category feedback summary */}
             {categoryEntries.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Your feedback</p>
+                <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Your feedback</p>
                 {categoryEntries.map(([id, text]) => (
                   <div key={id} className="flex items-start gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-border">
                     <span className="text-sm flex-shrink-0">{CATEGORY_EMOJI[id]}</span>
                     <div className="min-w-0">
-                      <p className="text-[10px] font-medium text-gray-500">{CATEGORY_LABEL[id]}</p>
+                      <p className="text-xs font-medium text-gray-500">{CATEGORY_LABEL[id]}</p>
                       <p className="text-xs text-gray-700 line-clamp-2">{text}</p>
                     </div>
                   </div>
@@ -820,7 +820,7 @@ function ScheduleSlideshow({
           Swipe to explore your schedule →
         </motion.p>
       ) : (
-        <p className="text-center text-[10px] text-text-muted">
+        <p className="text-center text-xs text-text-muted">
           {currentIndex + 1} of {totalSlides}
         </p>
       )}

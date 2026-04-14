@@ -9,7 +9,8 @@ import { timeToMinutes } from "@/lib/timeUtils";
 import { TaskCard } from "@/components/helper/TaskCard";
 import { DaySelectorStrip } from "@/components/helper/DaySelectorStrip";
 import { useTaskTranslations } from "@/hooks/useTaskTranslations";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { Loader2 } from "lucide-react";
 import { HelperHomeSkeleton } from "@/components/ui/Skeleton";
 import { MedicationCard } from "@/components/helper/MedicationCard";
@@ -17,6 +18,8 @@ import { EmergencyInfoCard } from "@/components/helper/EmergencyInfoCard";
 import { HouseholdMember } from "@/types/household";
 
 export default function HelperHomePage() {
+  const { track } = useAnalytics();
+  useEffect(() => { track("helper_view_visited", {}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const { t, language } = useTranslation();
   const session = useQuery(api.helperSessions.getMySession);
   const household = useQuery(api.households.getMyHousehold);
@@ -188,7 +191,7 @@ export default function HelperHomePage() {
       />
 
       {/* Progress bar */}
-      <div className="bg-white rounded-2xl border border-border p-4">
+      <div className="bg-white rounded-2xl shadow-card p-5 sm:p-6">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-gray-700">
             {completedCount} {t("of")} {tasks.length} {t("tasks_completed")}

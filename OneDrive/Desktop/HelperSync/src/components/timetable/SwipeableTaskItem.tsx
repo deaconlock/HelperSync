@@ -76,7 +76,7 @@ export function SwipeableTaskItem({
           className="flex-1 flex flex-col items-center justify-center gap-0.5 bg-gray-500 text-white"
         >
           <MoreHorizontal className="w-5 h-5" />
-          <span className="text-[10px] font-medium">More</span>
+          <span className="text-xs font-medium">More</span>
         </button>
 
         {/* Delete button */}
@@ -85,7 +85,7 @@ export function SwipeableTaskItem({
           className="flex-1 flex flex-col items-center justify-center gap-0.5 bg-red-500 text-white"
         >
           <Trash2 className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Delete</span>
+          <span className="text-xs font-medium">Delete</span>
         </button>
       </motion.div>
 

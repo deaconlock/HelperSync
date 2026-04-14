@@ -171,7 +171,7 @@ export function Step5Experience({ experience, pace, onUpdate }: Step5Props) {
                 <p className="font-display font-semibold text-sm text-gray-900">
                   {option.label}
                 </p>
-                <p className="text-[10px] leading-tight text-gray-400">
+                <p className="text-xs leading-tight text-gray-400">
                   {option.summary}
                 </p>
               </button>
@@ -188,7 +188,7 @@ export function Step5Experience({ experience, pace, onUpdate }: Step5Props) {
           ) : null
         )}
 
-        <p className="text-[10px] text-gray-400 text-center mt-3">
+        <p className="text-xs text-gray-400 text-center mt-3">
           A well-rested helper performs better long-term
         </p>
       </div>

@@ -4,6 +4,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { DndContext, DragEndEvent, closestCenter } from "@dnd-kit/core";
 import { useState, useEffect, useMemo } from "react";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { DAYS_OF_WEEK, DAY_LABELS, TaskItem, DayOfWeek } from "@/types/timetable";
 import { AddTaskDialog } from "@/components/timetable/AddTaskDialog";
 import { DayColumn } from "@/components/timetable/DayColumn";
@@ -20,6 +21,7 @@ import {
 } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { TimetableSkeleton } from "@/components/ui/Skeleton";
+import { CATEGORY_COLORS, CATEGORY_EMOJIS } from "@/types/timetable";
 
 type ViewMode = "template" | "live";
 
@@ -30,6 +32,8 @@ function getWeekDates(weekOffset: number) {
 }
 
 export default function TimetablePage() {
+  const { track } = useAnalytics();
+  useEffect(() => { track("timetable_opened", {}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const household = useQuery(api.households.getMyHousehold);
   const timetable = useQuery(
     api.timetable.getTimetable,
@@ -338,6 +342,19 @@ export default function TimetablePage() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Category color legend */}
+      <div className="flex flex-wrap gap-2">
+        {Object.entries(CATEGORY_COLORS).map(([category, colors]) => (
+          <span
+            key={category}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium ${colors}`}
+          >
+            <span>{CATEGORY_EMOJIS[category]}</span>
+            {category}
+          </span>
+        ))}
       </div>
 
       {/* Mobile day selector */}

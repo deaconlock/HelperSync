@@ -131,158 +131,183 @@ function formatTime12(t: string): string {
   return `${hour}:${String(m).padStart(2, "0")} ${period}`;
 }
 
-interface ChipGroup { label: string; chips: string[]; }
+interface ChipGroup { label: string; chips: string[]; variant?: "morning" | "afternoon" | "evening" | "additional"; }
 
-function getChipGroups(role: string, age?: number): ChipGroup[] {
+function getChipGroups(role: string, age?: number, workStatus?: "working" | "home" | null): ChipGroup[] {
   switch (role) {
     case "Husband":
-    case "Wife":
+    case "Wife": {
+      const morningGroups: ChipGroup[] = workStatus === "home"
+        ? [
+            {
+              label: "🌅 Morning",
+              variant: "morning",
+              chips: [
+                "Breakfast ready by 8am",
+                "Breakfast ready by 8:30am",
+                "School run at 8am",
+                "School run at 8:30am",
+                "Morning errands — back by noon",
+              ],
+            },
+            {
+              label: "☀️ Afternoon",
+              variant: "afternoon",
+              chips: [
+                "Home all day — coordinate tasks together",
+                "Grocery run in the afternoon",
+                "Nap 1–3pm — keep noise down",
+                "Out for errands 2–4pm",
+              ],
+            },
+          ]
+        : [
+            {
+              label: "🌅 Morning",
+              variant: "morning",
+              chips: [
+                "Breakfast ready by 7am",
+                "Breakfast ready by 7:30am",
+                "Out Mon–Fri, back by 6pm",
+                "Out Mon–Fri, back by 7pm",
+                "Out Mon–Fri, back by 8pm",
+              ],
+            },
+            {
+              label: "☀️ Afternoon",
+              variant: "afternoon",
+              chips: [
+                "WFH on Wednesdays",
+                "WFH full week",
+              ],
+            },
+          ];
+
       return [
+        ...morningGroups,
         {
-          label: "📅 Schedule",
+          label: "🌙 Evening",
+          variant: "evening",
           chips: [
-            "Out Mon–Fri, back by 6pm",
-            "Out Mon–Fri, back by 7pm",
-            "Out Mon–Fri, back by 8pm",
-            "WFH on Wednesdays",
-            "WFH full week",
-            "Early riser — up by 6am",
-            "Gym mornings — wash kit same day",
-            "Work clothes ironed Mon & Thu",
-            "No vacuuming before 9am",
-            "Clean rooms while I'm out",
-            "Deep clean Fridays — guests on weekends",
-            "Weekend afternoon quiet — nap 1–3pm",
-          ],
-        },
-        {
-          label: "🍽️ Meals",
-          chips: [
-            "Breakfast ready by 7am",
-            "Breakfast ready by 7:30am",
-            "Packed lunch daily",
             "Dinner ready by 6:30pm",
             "Dinner ready by 7pm",
             "Dinner ready by 7:30pm",
           ],
         },
+        {
+          label: "📋 Additional",
+          variant: "additional",
+          chips: workStatus === "home"
+            ? [
+                "Gym in the morning",
+                "Deep clean Fridays — guests on weekends",
+                "Weekend afternoon quiet — nap 1–3pm",
+                "Early riser — up by 6am",
+                "No vacuuming before 9am",
+              ]
+            : [
+                "Gym in the morning",
+                "Packed lunch daily",
+                "Work clothes ironed Mon & Thu",
+                "Gym mornings — wash kit same day",
+                "Deep clean Fridays — guests on weekends",
+                "Weekend afternoon quiet — nap 1–3pm",
+                "Early riser — up by 6am",
+                "Clean rooms while I'm out",
+                "No vacuuming before 9am",
+              ],
+        },
       ];
+    }
     case "Child":
       if (age !== undefined && age <= 2) {
         return [
           {
-            label: "🍼 Feeding",
-            chips: [
-              "Formula every 3 hours",
-              "Formula every 4 hours",
-              "Breastfeeding — prepare bottles",
-              "Milk top-up after meals",
-              "Solids 3× daily",
-            ],
-          },
-          {
-            label: "😴 Sleep",
+            label: "🌅 Morning",
+            variant: "morning",
             chips: [
               "Morning nap 9–10am",
               "Morning nap 10–11am",
+            ],
+          },
+          {
+            label: "☀️ Afternoon",
+            variant: "afternoon",
+            chips: [
               "Afternoon nap 12–2pm",
               "Afternoon nap 1–3pm",
               "Afternoon nap 2–4pm",
               "Catnap at 4pm",
-              "Bedtime at 7pm",
-              "Bedtime at 7:30pm",
-              "Bedtime at 8pm",
-              "Bedtime routine starts 30min early",
             ],
           },
           {
-            label: "🛁 Bath & Care",
+            label: "🌙 Evening",
+            variant: "evening",
             chips: [
               "Bath at 6pm",
               "Bath at 7pm",
-              "Morning sponge bath",
-              "Diaper changed every 2–3 hrs",
-            ],
-          },
-          {
-            label: "🧸 Play",
-            chips: [
-              "Tummy time 3× daily",
-              "Outdoor walk in pram daily",
-              "Sensory play after nap",
+              "Bedtime at 7pm",
+              "Bedtime at 7:30pm",
+              "Bedtime at 8pm",
             ],
           },
         ];
       }
       return [
         {
-          label: "🏫 School",
+          label: "🌅 Morning",
+          variant: "morning",
+          chips: [
+            "Breakfast before 7:30am",
+          ],
+        },
+        {
+          label: "☀️ Afternoon",
+          variant: "afternoon",
           chips: [
             "School pickup at 1pm",
             "School pickup at 2pm",
             "School pickup at 3pm",
-            "School lunch box packed daily",
-            "School snack packed daily",
-            "School bag packed night before",
-            "Homework help after school",
           ],
         },
         {
-          label: "⚽ Activities",
+          label: "🌙 Evening",
+          variant: "evening",
           chips: [
-            "Tuition Mon & Wed",
-            "Tuition on Saturdays",
-            "Swimming on Fridays",
-            "Music lessons on Thursdays",
-            "Football on weekends",
-            "Dance class on Wednesdays",
-          ],
-        },
-        {
-          label: "🌙 Evening Routine",
-          chips: [
-            "Dinner ready before homework",
-            "Breakfast before 7:30am",
-            "Bath before dinner",
             "Bedtime at 8:30pm",
             "Bedtime at 9pm",
-            "Bedtime routine starts 30min early",
-            "Outdoor play after school",
           ],
         },
       ];
     case "Elderly":
       return [
         {
-          label: "🌅 Daily Routine",
+          label: "🌅 Morning",
+          variant: "morning",
           chips: [
             "Morning walk at 7am",
             "Morning walk at 8am",
-            "Outdoor walk with helper daily",
-            "Snack ready for 4pm TV time",
-            "Sit with during meals",
-            "Religious prayers — do not disturb",
-          ],
-        },
-        {
-          label: "💊 Health & Medical",
-          chips: [
             "Medication at 8am and 8pm",
             "Medication after every meal",
-            "Doctor visit on Tuesdays",
-            "Physiotherapy on Thursdays",
-            "Blood pressure check daily",
-            "Blood sugar check before meals",
           ],
         },
         {
-          label: "🍲 Meals",
+          label: "☀️ Afternoon",
+          variant: "afternoon",
           chips: [
             "Lunch ready by 12pm",
             "Lunch ready by 1pm",
+            "Snack ready for 4pm TV time",
+            "Doctor visit on Tuesdays",
+            "Physiotherapy on Thursdays",
+          ],
+        },
+        {
+          label: "🌙 Evening",
+          variant: "evening",
+          chips: [
             "Dinner ready by 6pm",
             "Dinner ready by 6:30pm",
-            "Small meals, 4–5 times a day",
             "Warm drink before bed",
           ],
         },
@@ -337,24 +362,60 @@ interface Step4Props {
 function MemberCard({
   entry,
   quietHours,
+  initialRoutine,
   onRoutineChange,
   onQuietHoursChange,
 }: {
   entry: MemberEntry;
   quietHours: string;
+  initialRoutine: string;
   onRoutineChange: (value: string) => void;
   onQuietHoursChange: (value: string) => void;
 }) {
-  const [selectedChips, setSelectedChips] = useState<string[]>([]);
-  const [notes, setNotes] = useState("");
-  const [chipTimes, setChipTimes] = useState<Record<string, string>>({});
+  const isAdult = entry.role === "Husband" || entry.role === "Wife";
+
+  const [workStatus, setWorkStatus] = useState<"working" | "home" | null>(() => {
+    if (!isAdult) return null;
+    if (!initialRoutine) return null;
+    const lines = initialRoutine.split("\n");
+    if (lines.some((l) => l.startsWith("Out Mon–Fri") || l.includes("WFH"))) return "working";
+    if (lines.some((l) => l.startsWith("Home all day") || l.startsWith("School run") || l.startsWith("Morning errands") || l.startsWith("Grocery run") || l.startsWith("Out for errands") || l.startsWith("Nap 1–3pm"))) return "home";
+    return null;
+  });
+
+  const allKnownChips = getChipGroups(entry.role, entry.age, workStatus).flatMap((g) => g.chips);
+
+  const [selectedChips, setSelectedChips] = useState<string[]>(() => {
+    if (!initialRoutine) return [];
+    return initialRoutine.split("\n").filter(Boolean).flatMap((line) => {
+      const m = line.match(/^(.+) at \d+:\d+ [AP]M$/);
+      const chipText = m ? m[1] : line;
+      return allKnownChips.includes(chipText) ? [chipText] : [];
+    });
+  });
+  const [chipTimes, setChipTimes] = useState<Record<string, string>>(() => {
+    if (!initialRoutine) return {};
+    const times: Record<string, string> = {};
+    for (const line of initialRoutine.split("\n").filter(Boolean)) {
+      const m = line.match(/^(.+) at (\d+):(\d+) ([AP]M)$/);
+      if (m && allKnownChips.includes(m[1])) {
+        let h = parseInt(m[2]);
+        const min = m[3];
+        const period = m[4];
+        if (period === "PM" && h !== 12) h += 12;
+        if (period === "AM" && h === 12) h = 0;
+        times[m[1]] = `${String(h).padStart(2, "0")}:${min}`;
+      }
+    }
+    return times;
+  });
   const [customChips, setCustomChips] = useState<Record<string, string[]>>({});
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [addingGroup, setAddingGroup] = useState<string | null>(null);
   const [addingValue, setAddingValue] = useState("");
   const addInputRef = useRef<HTMLInputElement>(null);
 
-  const chipGroups = getChipGroups(entry.role, entry.age);
+  const chipGroups = getChipGroups(entry.role, entry.age, workStatus);
 
   useEffect(() => {
     if (addingGroup) addInputRef.current?.focus();
@@ -374,7 +435,7 @@ function MemberCard({
       next = [...withoutConflicts, chip];
     }
     setSelectedChips(next);
-    onRoutineChange(buildRoutineText(next, notes, chipTimes));
+    onRoutineChange(buildRoutineText(next, "", chipTimes));
 
     // Auto-derive quiet hours from nap chip — no manual step needed
     if (chip in NAP_TO_QUIET) {
@@ -392,13 +453,13 @@ function MemberCard({
     setCustomChips(updatedCustom);
     const next = [...selectedChips, chip];
     setSelectedChips(next);
-    onRoutineChange(buildRoutineText(next, notes, chipTimes));
+    onRoutineChange(buildRoutineText(next, "", chipTimes));
   };
 
   const handleTimeChange = (chip: string, time: string) => {
     const updated = { ...chipTimes, [chip]: time };
     setChipTimes(updated);
-    onRoutineChange(buildRoutineText(selectedChips, notes, updated));
+    onRoutineChange(buildRoutineText(selectedChips, "", updated));
   };
 
   const commitCustomChip = (groupLabel: string) => {
@@ -408,7 +469,7 @@ function MemberCard({
       setCustomChips(updated);
       const next = [...selectedChips, val];
       setSelectedChips(next);
-      onRoutineChange(buildRoutineText(next, notes, chipTimes));
+      onRoutineChange(buildRoutineText(next, "", chipTimes));
     }
     setAddingGroup(null);
     setAddingValue("");
@@ -419,12 +480,7 @@ function MemberCard({
     setCustomChips(updated);
     const next = selectedChips.filter((c) => c !== chip);
     setSelectedChips(next);
-    onRoutineChange(buildRoutineText(next, notes, chipTimes));
-  };
-
-  const handleNotesChange = (value: string) => {
-    setNotes(value);
-    onRoutineChange(buildRoutineText(selectedChips, value, chipTimes));
+    onRoutineChange(buildRoutineText(next, "", chipTimes));
   };
 
   const ageLabel = entry.age !== undefined ? AGE_LABEL[entry.age] : undefined;
@@ -433,7 +489,7 @@ function MemberCard({
   return (
     <div className={cn(
       "rounded-2xl border overflow-hidden transition-all duration-500",
-      selectedChips.length > 0 || notes.trim() ? "border-emerald-200 bg-emerald-50/20" : "border-border bg-white"
+      selectedChips.length > 0 ? "border-emerald-200 bg-emerald-50/20" : "border-border bg-white"
     )}>
       {/* Static header */}
       <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border">
@@ -456,7 +512,7 @@ function MemberCard({
               {selectedChips.length} selected
             </span>
           )}
-          {(selectedChips.length > 0 || notes.trim()) && (
+          {selectedChips.length > 0 && (
             <CheckCircle className="w-4 h-4 text-emerald-500 animate-checkmark" />
           )}
         </div>
@@ -464,8 +520,48 @@ function MemberCard({
 
       {/* Body — always visible */}
       <div className="px-4 pb-4 space-y-4 pt-4">
-        {/* Chip groups */}
-        {chipGroups.map((group) => {
+
+        {/* Work status toggle — adults only */}
+        {isAdult && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-gray-500 tracking-wide">How does {entry.name || entry.role}&apos;s day typically look?</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setWorkStatus("working");
+                  setSelectedChips([]);
+                  setChipTimes({});
+                }}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border-2 text-sm font-medium transition-all duration-150",
+                  workStatus === "working"
+                    ? "border-primary bg-primary-50 text-primary"
+                    : "border-border bg-white text-gray-600 hover:border-gray-300"
+                )}
+              >
+                💼 Goes out to work
+              </button>
+              <button
+                onClick={() => {
+                  setWorkStatus("home");
+                  setSelectedChips([]);
+                  setChipTimes({});
+                }}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border-2 text-sm font-medium transition-all duration-150",
+                  workStatus === "home"
+                    ? "border-primary bg-primary-50 text-primary"
+                    : "border-border bg-white text-gray-600 hover:border-gray-300"
+                )}
+              >
+                🏠 Home full-time
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Chip groups — shown once work status chosen (or always for non-adults) */}
+        {(!isAdult || workStatus !== null) && chipGroups.map((group) => {
           const hasTimeSensitive = group.chips.some((c) => TIME_SENSITIVE_CHIPS.has(c));
           const isGroupExpanded = expandedGroups.has(group.label);
           const VISIBLE = 4;
@@ -488,16 +584,26 @@ function MemberCard({
               !(customChips[group.label] ?? []).includes(s)
             );
 
+          const variantLabelClass =
+            group.variant === "morning"    ? "border-l-2 border-amber-300 pl-2 text-amber-700" :
+            group.variant === "afternoon"  ? "border-l-2 border-sky-400 pl-2 text-sky-700" :
+            group.variant === "evening"    ? "border-l-2 border-indigo-300 pl-2 text-indigo-700" :
+
+            "text-gray-500";
+
           return (
             <div key={group.label} className="space-y-2">
+              {group.variant && chipGroups.indexOf(group) > 0 && (
+                <div className="border-t border-gray-100 -mx-4 pt-1" />
+              )}
               <div className="flex items-center gap-2">
-                <p className="text-xs font-semibold text-gray-500 tracking-wide">{group.label}</p>
+                <p className={cn("text-xs font-semibold tracking-wide", variantLabelClass)}>{group.label}</p>
                 {hasTimeSensitive && (
-                  <p className="text-[10px] text-gray-400">— set a time for auto-prep</p>
+                  <p className="text-xs text-gray-400">— set a time for auto-prep</p>
                 )}
                 {groupSelectedCount > 0 && (
                   <span className={cn(
-                    "ml-auto text-[10px] font-medium tabular-nums",
+                    "ml-auto text-xs font-medium tabular-nums",
                     groupSelectedCount >= MAX_PER_GROUP ? "text-amber-500" : "text-gray-400"
                   )}>
                     {groupSelectedCount} / {MAX_PER_GROUP}
@@ -645,7 +751,7 @@ function MemberCard({
               {/* Helper-POV suggestions */}
               {groupSuggestions.length > 0 && (
                 <div className="space-y-1.5 pt-1">
-                  <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">
+                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
                     💡 Consider for your helper
                   </p>
                   <div className="flex flex-wrap gap-1.5">
@@ -665,17 +771,6 @@ function MemberCard({
             </div>
           );
         })}
-
-        {/* Anything else */}
-        <div className="pt-1">
-          <input
-            type="text"
-            value={notes}
-            onChange={(e) => handleNotesChange(e.target.value)}
-            placeholder="Anything else the helper should know..."
-            className="w-full px-3 py-2 rounded-xl border border-border text-sm text-gray-600 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-          />
-        </div>
 
       </div>
     </div>
@@ -803,7 +898,7 @@ function FamilyPhotoCard({ entries, memberRoutines, onContinue }: { entries: Mem
           </div>
 
           {/* Photo caption strip */}
-          <p className="text-[10px] text-gray-300 text-center mt-3 font-medium tracking-wide uppercase">
+          <p className="text-xs text-gray-300 text-center mt-3 font-medium tracking-wide uppercase">
             {entries.length} member{entries.length !== 1 ? "s" : ""} · all set
           </p>
         </div>
@@ -825,17 +920,17 @@ function FamilyPhotoCard({ entries, memberRoutines, onContinue }: { entries: Mem
         <div className="w-full bg-gray-50 rounded-xl border border-gray-100 px-4 py-3 mb-6 flex items-center justify-around text-center">
           <div>
             <p className="text-lg font-display font-bold text-gray-900">{entries.length}</p>
-            <p className="text-[10px] text-gray-400 uppercase tracking-wide">people</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wide">people</p>
           </div>
           <div className="w-px h-8 bg-gray-200" />
           <div>
             <p className="text-lg font-display font-bold text-gray-900">{totalRoutines}</p>
-            <p className="text-[10px] text-gray-400 uppercase tracking-wide">routines</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wide">routines</p>
           </div>
           <div className="w-px h-8 bg-gray-200" />
           <div>
             <p className="text-lg font-display font-bold text-emerald-500">✓</p>
-            <p className="text-[10px] text-gray-400 uppercase tracking-wide">all set</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wide">all set</p>
           </div>
         </div>
 
@@ -873,8 +968,6 @@ export function Step4DailyLife({
     role: m.role,
     age: m.age,
   }));
-
-  const activeEntry = entries[activeIndex];
 
   const handleRoutineChange = (key: string, value: string) => {
     onUpdate({ ...memberRoutines, [key]: value }, memberSchedules);
@@ -939,7 +1032,7 @@ export function Step4DailyLife({
                   )}
                 </div>
                 <span className={cn(
-                  "text-[10px] font-medium truncate max-w-[48px]",
+                  "text-xs font-medium truncate max-w-[48px]",
                   isActive ? "text-primary" : "text-gray-500"
                 )}>
                   {entry.name || entry.role}
@@ -956,6 +1049,7 @@ export function Step4DailyLife({
           <MemberCard
             entry={entry}
             quietHours={memberQuietHours[entry.key] ?? ""}
+            initialRoutine={memberRoutines[entry.key] ?? ""}
             onRoutineChange={(v) => handleRoutineChange(entry.key, v)}
             onQuietHoursChange={(v) => handleQuietHoursChange(entry.key, v)}
           />

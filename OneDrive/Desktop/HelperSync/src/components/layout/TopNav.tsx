@@ -22,7 +22,7 @@ export function TopNav({ household, onAiToggle, aiSidebarOpen }: TopNavProps) {
   return (
     <header className="bg-white/80 backdrop-blur-md border-b border-border px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between flex-shrink-0 z-20 sticky top-0">
       <div className="flex items-center gap-2 sm:gap-3">
-        <Logo size="sm" />
+        <Logo size="sm" href="/dashboard" />
         {household.homeName && (
           <span className="text-xs text-text-muted hidden sm:inline border-l border-border pl-3">{household.homeName}</span>
         )}
@@ -58,8 +58,9 @@ export function TopNav({ household, onAiToggle, aiSidebarOpen }: TopNavProps) {
         <button
           onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
           className="p-2 text-text-secondary hover:bg-gray-50 rounded-xl transition-colors duration-200"
-          title={resolvedTheme === "dark" ? "Light mode" : "Dark mode"}
+          aria-label={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
         >
+          <span className="sr-only">{resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}</span>
           {resolvedTheme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
 

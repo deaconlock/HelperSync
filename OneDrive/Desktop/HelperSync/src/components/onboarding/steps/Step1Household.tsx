@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, Plus, Home, Check, Minus, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { HomeSize, SetupFor, Priority } from "@/app/onboarding/employer/page";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
 
 // --- Constants ---
 
@@ -340,9 +341,12 @@ export function Step1Household({ rooms, homeName, homeSize, setupFor, householdF
 
       {/* Home size */}
       <div className="space-y-3">
-        <h3 className="text-sm font-medium text-gray-700">
-          How big is {isOwn ? "your home" : "the home"}?
-        </h3>
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-sm font-medium text-gray-700">
+            How big is {isOwn ? "your home" : "the home"}?
+          </h3>
+          <InfoTooltip content="Home size helps us estimate the right number of tasks and cleaning time per day. A compact home gets lighter cleaning loads; spacious homes get more thorough coverage." />
+        </div>
         <div className="grid grid-cols-3 gap-2">
           {SIZE_OPTIONS.map((opt) => {
             const isSelected = localSize === opt.value;

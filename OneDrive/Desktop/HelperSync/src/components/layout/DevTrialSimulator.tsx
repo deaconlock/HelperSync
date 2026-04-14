@@ -51,7 +51,7 @@ export function DevTrialSimulator({ householdId }: Props) {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute bottom-full left-0 mb-2 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-50 min-w-[200px]">
-            <p className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+            <p className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">
               Simulate Trial Day
             </p>
             {TRIAL_DAYS.map(({ day, label, desc }) => (

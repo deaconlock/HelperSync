@@ -128,7 +128,7 @@ export function DailyInstructionDialog({
           {/* Permanent notes hint */}
           {task.notes && (
             <div className="px-3 py-2 bg-gray-50 rounded-lg border border-border">
-              <p className="text-[10px] uppercase tracking-wide text-text-muted font-medium mb-0.5">Permanent note</p>
+              <p className="text-xs uppercase tracking-wide text-text-muted font-medium mb-0.5">Permanent note</p>
               <p className="text-xs text-text-secondary italic">{task.notes}</p>
             </div>
           )}

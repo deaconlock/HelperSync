@@ -85,6 +85,36 @@ input, textarea, select {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes welcome-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
+}
+
+@keyframes cta-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes screen-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes splash-fade-in {
+  from { opacity: 0; transform: scale(1.02); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes splash-ken-burns {
+  from { transform: scale(1); }
+  to   { transform: scale(1.03); }
+}
+
+@keyframes splash-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
 @keyframes progress-fill {
   from { width: 0; }
 }
