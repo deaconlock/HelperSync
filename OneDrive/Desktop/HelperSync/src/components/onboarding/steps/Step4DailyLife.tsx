@@ -3,18 +3,18 @@
 import { useState, useRef, useEffect } from "react";
 import { CheckCircle, Users, Check, Plus, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { HouseholdMember } from "@/types/household";
-import { DayAvailability } from "@/types/schedule";
 import { cn } from "@/lib/utils";
 import type { SetupFor } from "@/app/onboarding/employer/page";
 
 // --- Constants ---
 
 const ROLE_EMOJIS: Record<string, string> = {
-  Husband: "👨",
-  Wife: "👩",
-  Child: "👶",
-  Elderly: "👴",
-  Other: "🧑",
+  Me:       "🏠",
+  Spouse:   "💑",
+  Child:    "👶",
+  Elderly:  "👴",
+  Pets:     "🐾",
+  Relative: "👤",
 };
 
 const AGE_LABEL: Record<number, string> = {
@@ -103,6 +103,35 @@ const SUGGESTIONS: Record<string, string[]> = {
 
 const MAX_PER_GROUP = 3;
 
+// --- Templates ---
+
+const TEMPLATES: Record<string, { label: string; emoji: string; chips: string[] }[]> = {
+  working: [
+    {
+      label: "Office hours",
+      emoji: "💼",
+      chips: ["Breakfast ready by 7am", "Out Mon–Fri, back by 7pm", "Dinner ready by 7pm"],
+    },
+    {
+      label: "Hybrid / WFH",
+      emoji: "💻",
+      chips: ["Breakfast ready by 7:30am", "WFH on Wednesdays", "Dinner ready by 7pm"],
+    },
+  ],
+  home: [
+    {
+      label: "Home full-time",
+      emoji: "🏠",
+      chips: ["Breakfast ready by 8am", "Home all day — coordinate tasks together", "Dinner ready by 7pm"],
+    },
+    {
+      label: "School runs",
+      emoji: "🎒",
+      chips: ["Breakfast ready by 7:30am", "School run at 8am", "Dinner ready by 6:30pm"],
+    },
+  ],
+};
+
 function getChipState(
   chip: string,
   selectedChips: string[],
@@ -135,8 +164,9 @@ interface ChipGroup { label: string; chips: string[]; variant?: "morning" | "aft
 
 function getChipGroups(role: string, age?: number, workStatus?: "working" | "home" | null): ChipGroup[] {
   switch (role) {
-    case "Husband":
-    case "Wife": {
+    case "Me":
+    case "Spouse":
+    case "Relative": {
       const morningGroups: ChipGroup[] = workStatus === "home"
         ? [
             {
@@ -343,18 +373,19 @@ interface MemberEntry {
   name: string;
   role: string;
   age?: number;
+  timePresets?: string[];
 }
 
 interface Step4Props {
   members: HouseholdMember[];
   memberRoutines: Record<string, string>;
-  memberSchedules: Record<string, DayAvailability>;
   memberQuietHours: Record<string, string>;
   setupFor: SetupFor | null;
   showReward: boolean;
-  onUpdate: (routines: Record<string, string>, schedules: Record<string, DayAvailability>) => void;
+  onUpdate: (routines: Record<string, string>) => void;
   onQuietHoursUpdate: (quietHours: Record<string, string>) => void;
   onComplete: () => void;
+  onDismissReward: () => void;
 }
 
 // --- MemberCard ---
@@ -372,16 +403,14 @@ function MemberCard({
   onRoutineChange: (value: string) => void;
   onQuietHoursChange: (value: string) => void;
 }) {
-  const isAdult = entry.role === "Husband" || entry.role === "Wife";
+  const isAdult = entry.role === "Me" || entry.role === "Spouse" || entry.role === "Relative";
 
-  const [workStatus, setWorkStatus] = useState<"working" | "home" | null>(() => {
-    if (!isAdult) return null;
-    if (!initialRoutine) return null;
-    const lines = initialRoutine.split("\n");
-    if (lines.some((l) => l.startsWith("Out Mon–Fri") || l.includes("WFH"))) return "working";
-    if (lines.some((l) => l.startsWith("Home all day") || l.startsWith("School run") || l.startsWith("Morning errands") || l.startsWith("Grocery run") || l.startsWith("Out for errands") || l.startsWith("Nap 1–3pm"))) return "home";
-    return null;
-  });
+  // Derive work status from Step 2 time presets — no need to ask again
+  const workStatus: "working" | "home" | null = !isAdult
+    ? null
+    : (entry.timePresets ?? []).includes("allday")
+      ? "home"
+      : "working";
 
   const allKnownChips = getChipGroups(entry.role, entry.age, workStatus).flatMap((g) => g.chips);
 
@@ -521,47 +550,47 @@ function MemberCard({
       {/* Body — always visible */}
       <div className="px-4 pb-4 space-y-4 pt-4">
 
-        {/* Work status toggle — adults only */}
-        {isAdult && (
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-gray-500 tracking-wide">How does {entry.name || entry.role}&apos;s day typically look?</p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setWorkStatus("working");
-                  setSelectedChips([]);
-                  setChipTimes({});
-                }}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border-2 text-sm font-medium transition-all duration-150",
-                  workStatus === "working"
-                    ? "border-primary bg-primary-50 text-primary"
-                    : "border-border bg-white text-gray-600 hover:border-gray-300"
-                )}
-              >
-                💼 Goes out to work
-              </button>
-              <button
-                onClick={() => {
-                  setWorkStatus("home");
-                  setSelectedChips([]);
-                  setChipTimes({});
-                }}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border-2 text-sm font-medium transition-all duration-150",
-                  workStatus === "home"
-                    ? "border-primary bg-primary-50 text-primary"
-                    : "border-border bg-white text-gray-600 hover:border-gray-300"
-                )}
-              >
-                🏠 Home full-time
-              </button>
+        {/* Template quick-start — adults only */}
+        {isAdult && workStatus !== null && (() => {
+          const templates = TEMPLATES[workStatus] ?? [];
+          return (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-gray-400 font-medium">Quick start:</span>
+              {templates.map((tpl) => {
+                const isActive = tpl.chips.length === selectedChips.length &&
+                  tpl.chips.every((c) => selectedChips.includes(c));
+                return (
+                  <button
+                    key={tpl.label}
+                    onClick={() => {
+                      if (isActive) {
+                        setSelectedChips([]);
+                        setChipTimes({});
+                        onRoutineChange("");
+                      } else {
+                        setSelectedChips(tpl.chips);
+                        setChipTimes({});
+                        onRoutineChange(buildRoutineText(tpl.chips, "", {}));
+                      }
+                    }}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-150",
+                      isActive
+                        ? "bg-gray-900 text-white border-gray-900"
+                        : "bg-white text-gray-600 border-gray-300 hover:border-gray-500"
+                    )}
+                  >
+                    <span>{tpl.emoji}</span>
+                    {tpl.label}
+                  </button>
+                );
+              })}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
-        {/* Chip groups — shown once work status chosen (or always for non-adults) */}
-        {(!isAdult || workStatus !== null) && chipGroups.map((group) => {
+        {/* Chip groups */}
+        {chipGroups.map((group) => {
           const hasTimeSensitive = group.chips.some((c) => TIME_SENSITIVE_CHIPS.has(c));
           const isGroupExpanded = expandedGroups.has(group.label);
           const VISIBLE = 4;
@@ -617,23 +646,29 @@ function MemberCard({
                   const isDisabled = state === "conflicted" || state === "limit";
                   const isTimeSensitive = TIME_SENSITIVE_CHIPS.has(chip);
 
+                  const selectedClass =
+                    group.variant === "morning"   ? "border-amber-500 bg-amber-500 text-white" :
+                    group.variant === "afternoon" ? "border-sky-500 bg-sky-500 text-white" :
+                    group.variant === "evening"   ? "border-indigo-500 bg-indigo-500 text-white" :
+                                                    "border-gray-700 bg-gray-700 text-white";
+
                   if (isSelected && isTimeSensitive) {
                     return (
                       <span
                         key={chip}
-                        className="flex items-center gap-1 pl-2.5 pr-2 py-1.5 rounded-xl border-2 border-primary bg-primary-50 text-primary text-xs font-medium"
+                        className={cn("flex items-center gap-1 pl-2.5 pr-2 py-1.5 rounded-xl border-2 text-xs font-medium", selectedClass)}
                       >
                         <button onClick={() => toggleChip(chip)} className="flex items-center gap-1">
                           <Check className="w-3 h-3 flex-shrink-0" />
                           {chip}
                         </button>
-                        <span className="mx-1 text-primary/40">·</span>
+                        <span className="mx-1 opacity-40">·</span>
                         <input
                           type="time"
                           value={chipTimes[chip] ?? ""}
                           onChange={(e) => handleTimeChange(chip, e.target.value)}
                           onClick={(e) => e.stopPropagation()}
-                          className="text-xs bg-transparent outline-none text-primary w-[4.5rem] cursor-pointer"
+                          className="text-xs bg-transparent outline-none opacity-90 w-[4.5rem] cursor-pointer"
                         />
                       </span>
                     );
@@ -647,7 +682,7 @@ function MemberCard({
                       className={cn(
                         "flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 text-xs font-medium transition-all duration-150",
                         isSelected
-                          ? "border-primary bg-primary-50 text-primary active:scale-95"
+                          ? cn(selectedClass, "active:scale-95")
                           : state === "conflicted"
                             ? "border-gray-100 bg-gray-50 text-gray-300 line-through decoration-gray-300 cursor-not-allowed"
                             : state === "limit"
@@ -696,7 +731,7 @@ function MemberCard({
                       className={cn(
                         "flex items-center gap-1 pl-3 pr-1.5 py-1.5 rounded-xl border-2 text-xs font-medium transition-all duration-150",
                         selected
-                          ? "border-primary bg-primary-50 text-primary"
+                          ? cn(selectedClass, "")
                           : "border-border bg-white text-gray-600"
                       )}
                     >
@@ -783,7 +818,7 @@ function deriveFamilyPersona(entries: MemberEntry[]): { name: string; tagline: s
   const hasElderly = entries.some((e) => e.role === "Elderly");
   const infants = entries.filter((e) => e.role === "Child" && (e.age ?? 99) <= 2);
   const kids = entries.filter((e) => e.role === "Child" && (e.age ?? 0) > 2);
-  const adults = entries.filter((e) => e.role === "Husband" || e.role === "Wife");
+  const adults = entries.filter((e) => e.role === "Me" || e.role === "Spouse");
 
   if (hasElderly && kids.length > 0)
     return {
@@ -834,7 +869,7 @@ function deriveFamilyPersona(entries: MemberEntry[]): { name: string; tagline: s
   };
 }
 
-function FamilyPhotoCard({ entries, memberRoutines, onContinue }: { entries: MemberEntry[]; memberRoutines: Record<string, string>; onContinue: () => void }) {
+function FamilyPhotoCard({ entries, memberRoutines, onContinue, onBack }: { entries: MemberEntry[]; memberRoutines: Record<string, string>; onContinue: () => void; onBack: () => void }) {
   const { name, tagline, praise } = deriveFamilyPersona(entries);
   const totalRoutines = entries.reduce((sum, e) => {
     const lines = (memberRoutines[e.key] ?? "").split("\n").filter((l) => l.trim());
@@ -842,7 +877,7 @@ function FamilyPhotoCard({ entries, memberRoutines, onContinue }: { entries: Mem
   }, 0);
 
   // Split into two rows like a real group photo: adults back row, kids/elderly front
-  const backRow = entries.filter((e) => e.role === "Husband" || e.role === "Wife" || e.role === "Other");
+  const backRow = entries.filter((e) => e.role === "Me" || e.role === "Spouse" || e.role === "Pets");
   const frontRow = entries.filter((e) => e.role === "Child" || e.role === "Elderly");
   const singleRow = frontRow.length === 0 || backRow.length === 0;
   const rows = singleRow ? [entries] : [backRow, frontRow];
@@ -941,6 +976,12 @@ function FamilyPhotoCard({ entries, memberRoutines, onContinue }: { entries: Mem
         >
           Perfect — let&apos;s keep going
         </button>
+        <button
+          onClick={onBack}
+          className="mt-3 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          ← Edit household
+        </button>
       </div>
     </div>
   );
@@ -951,13 +992,13 @@ function FamilyPhotoCard({ entries, memberRoutines, onContinue }: { entries: Mem
 export function Step4DailyLife({
   members,
   memberRoutines,
-  memberSchedules,
   memberQuietHours,
   setupFor,
   showReward,
   onUpdate,
   onQuietHoursUpdate,
   onComplete,
+  onDismissReward,
 }: Step4Props) {
   const isOwn = setupFor !== "family";
   const [activeIndex, setActiveIndex] = useState(0);
@@ -967,10 +1008,11 @@ export function Step4DailyLife({
     name: m.name,
     role: m.role,
     age: m.age,
+    timePresets: m.timePresets ?? [],
   }));
 
   const handleRoutineChange = (key: string, value: string) => {
-    onUpdate({ ...memberRoutines, [key]: value }, memberSchedules);
+    onUpdate({ ...memberRoutines, [key]: value });
   };
 
   const handleQuietHoursChange = (key: string, value: string) => {
@@ -986,7 +1028,7 @@ export function Step4DailyLife({
   return (
     <div className="space-y-6">
       {showReward && (
-        <FamilyPhotoCard entries={entries} memberRoutines={memberRoutines} onContinue={onComplete} />
+        <FamilyPhotoCard entries={entries} memberRoutines={memberRoutines} onContinue={onComplete} onBack={onDismissReward} />
       )}
 
       {/* Header */}
@@ -995,12 +1037,10 @@ export function Step4DailyLife({
           <Users className="w-8 h-8 text-gray-700" />
         </div>
         <h2 className="text-2xl font-display font-semibold tracking-tight text-gray-900 mb-2">
-          Share each person&apos;s daily routines &amp; timings
+          Daily rhythms &amp; needs
         </h2>
         <p className="text-text-secondary text-sm max-w-md">
-          {isOwn
-            ? "The times you add here shape the entire schedule — prep before activities, meals ready when needed, and quiet during naps."
-            : "The more specific the times, the smarter the schedule — prep before activities, meal timing, and quiet windows are all built from this."}
+          Tell us about {entries[activeIndex]?.name || "each person"}&apos;s typical day
         </p>
       </div>
 

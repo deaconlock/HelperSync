@@ -28,21 +28,16 @@ export function WelcomeScreen({ onStart }: WelcomeScreenProps) {
           showSplash ? "opacity-100 pointer-events-auto" : "opacity-0"
         )}
       >
-        {/* Full-screen landing image with Ken Burns zoom */}
-        <div className="absolute inset-0 flex items-center justify-center bg-[#FAFAF9]">
-          <div
-            className="relative w-[70%] h-[70%]"
-            style={{
-              animation: "splash-fade-in 0.8s cubic-bezier(0.22,1,0.36,1) forwards, splash-ken-burns 5s ease-in-out 0.8s forwards",
-            }}
-          >
-            <Image
-              src="/images/Landing%20Page.png"
-              alt="HelperSync"
-              fill
-              className="object-contain"
-              priority
-            />
+        {/* Splash — logo + tagline on pure white */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white gap-6"
+          style={{ animation: "splash-fade-in 0.8s cubic-bezier(0.22,1,0.36,1) forwards" }}
+        >
+          <Logo size="xl" showText={false} />
+          <div className="text-center">
+            <p className="text-3xl font-display tracking-tight mt-1">
+              <span className="font-semibold text-gray-900">Helper</span><span className="font-normal text-text-secondary">Sync</span>
+            </p>
+            <p className="text-sm text-gray-400 mt-1">One home. One team. In sync.</p>
           </div>
         </div>
       </div>

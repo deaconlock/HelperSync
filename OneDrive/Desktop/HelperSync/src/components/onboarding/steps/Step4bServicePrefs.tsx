@@ -60,7 +60,7 @@ function getSections(
   const hasInfant = members.some((m) => m.role === "Child" && (m.age ?? 99) <= 2);
   const hasChild = members.some((m) => m.role === "Child" && (m.age ?? 0) > 2);
   const hasElderly = members.some((m) => m.role === "Elderly");
-  const hasAdult = members.some((m) => m.role === "Husband" || m.role === "Wife");
+  const hasAdult = members.some((m) => m.role === "Me" || m.role === "Spouse");
 
   if (hasInfant) {
     sections.push({

@@ -35,6 +35,7 @@ export function WizardShell({
   const currentStep = Math.floor(step); // handle step 4.5
   const currentLabel = stepLabels?.[currentStep - 1];
   const nextLabel = stepLabels?.[currentStep]; // index = currentStep (0-based next)
+  const progressPct = Math.round((currentStep / totalSteps) * 100);
   const contentMaxW = wide ? "max-w-6xl" : "max-w-xl";
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -50,7 +51,7 @@ export function WizardShell({
                 </p>
               )}
               <span className="text-xs text-text-muted">
-                Step {currentStep} of {totalSteps}
+                Step {currentStep} of {totalSteps} · <span className="font-semibold text-gray-700">{progressPct}%</span>
               </span>
             </div>
           </div>

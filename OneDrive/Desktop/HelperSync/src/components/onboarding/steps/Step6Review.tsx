@@ -65,8 +65,6 @@ export function Step6Review({ data, onTimetableGenerated }: Step6Props) {
           rooms: data.rooms,
           members: data.members,
           helperDetails: data.helperDetails,
-          employerAvailability: data.employerAvailability,
-          wifeAvailability: data.wifeAvailability,
         }),
       });
 

@@ -1,30 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { X, Plus, Home, Check, Minus } from "lucide-react";
+import { X, Plus, Home, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { HomeSize, SetupFor } from "@/app/onboarding/employer/page";
 import { InfoTooltip } from "@/components/ui/InfoTooltip";
 
 // --- Constants ---
 
-// Combo chips — selecting one blocks its constituent rooms
-const COMBO_ROOMS: { label: string; blocks: string[] }[] = [
-  { label: "Kitchen + Dining (open-plan)", blocks: ["Kitchen", "Dining Area"] },
-  { label: "Living + Dining (open-plan)", blocks: ["Living Room", "Dining Area"] },
-];
-
 const PRESET_ROOMS: { label: string; emoji: string }[] = [
   { label: "Master Bedroom", emoji: "🛏️" },
-  { label: "Common Bedroom", emoji: "🛌" },
+  { label: "Kid's Room", emoji: "🧒" },
+  { label: "Guest Room", emoji: "🛌" },
   { label: "Living Room", emoji: "🛋️" },
   { label: "Kitchen", emoji: "🍳" },
-  { label: "Dining Area", emoji: "🍽️" },
+  { label: "Dining Room", emoji: "🍽️" },
   { label: "Bathroom", emoji: "🚿" },
   { label: "Helper's Room", emoji: "🛏️" },
   { label: "Service Area", emoji: "🌿" },
-  { label: "Store Room", emoji: "📦" },
-  { label: "Study Room", emoji: "📚" },
+  { label: "Storeroom", emoji: "📦" },
+  { label: "Study / Office", emoji: "📚" },
   { label: "Balcony", emoji: "🌅" },
 ];
 
@@ -144,26 +139,7 @@ export function Step1Household({ rooms, homeName, homeSize, setupFor, onUpdate }
     emit(roomMap, localHomeName, size);
   };
 
-  // Which individual rooms are blocked by a selected combo
-  const blockedRooms = new Set(
-    COMBO_ROOMS.filter((c) => roomMap[c.label]).flatMap((c) => c.blocks)
-  );
-
-  const toggleCombo = (label: string, blocks: string[]) => {
-    const next = { ...roomMap };
-    if (next[label]) {
-      // Deselect combo
-      delete next[label];
-    } else {
-      // Select combo — remove any individually selected constituent rooms
-      next[label] = 1;
-      blocks.forEach((b) => delete next[b]);
-    }
-    setRoomMap(next);
-    emit(next, localHomeName, localSize);
-  };
-
-  const allKnownRooms = new Set([...PRESET_ROOMS.map((r) => r.label), ...COMBO_ROOMS.map((c) => c.label)]);
+  const allKnownRooms = new Set(PRESET_ROOMS.map((r) => r.label));
   const customRooms = Object.keys(roomMap).filter((r) => !allKnownRooms.has(r));
 
   return (
@@ -177,15 +153,16 @@ export function Step1Household({ rooms, homeName, homeSize, setupFor, onUpdate }
           Tell us about your home
         </h2>
         <p className="text-text-secondary text-sm max-w-md">
-          This helps us create a realistic cleaning schedule.
+          We'll use this to figure out what needs cleaning and how long it takes.
         </p>
       </div>
 
       {/* Home name */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Home nickname <span className="text-gray-400 font-normal">(optional)</span>
+        <label className="block text-sm font-medium text-gray-700 mb-0.5">
+          What do you call it at home?
         </label>
+        <p className="text-xs text-gray-400 mb-2">Optional — your helper will see this name on their app.</p>
         <input
           type="text"
           value={localHomeName}
@@ -200,9 +177,12 @@ export function Step1Household({ rooms, homeName, homeSize, setupFor, onUpdate }
 
       {/* Home size — moved above rooms */}
       <div className="space-y-3">
-        <div className="flex items-center gap-1.5">
-          <h3 className="text-sm font-medium text-gray-700">Home size</h3>
-          <InfoTooltip content="Home size helps us estimate the right number of tasks and cleaning time per day. A compact home gets lighter cleaning loads; spacious homes get more thorough coverage." />
+        <div>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <h3 className="text-sm font-medium text-gray-700">How big is your home?</h3>
+            <InfoTooltip content="This helps us get the workload right — bigger homes get more thorough coverage, smaller ones a lighter load." />
+          </div>
+          <p className="text-xs text-gray-400">Roughly is fine.</p>
         </div>
         <div className="grid grid-cols-3 gap-2">
           {SIZE_OPTIONS.map((opt) => {
@@ -227,39 +207,19 @@ export function Step1Household({ rooms, homeName, homeSize, setupFor, onUpdate }
         </div>
       </div>
 
-      {/* Room picker */}
+      {/* Area picker */}
       <div className="space-y-3">
         <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Rooms to clean
+          <label className="block text-sm font-medium text-gray-700 mb-0.5">
+            Areas to clean
           </label>
+          <p className="text-xs text-gray-400">Tap to add. Tap again if you have more than one of the same.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          {/* Combo options — span full width */}
-          {COMBO_ROOMS.map(({ label, blocks }) => {
-            const selected = !!roomMap[label];
-            return (
-              <button
-                key={label}
-                onClick={() => toggleCombo(label, blocks)}
-                className={cn(
-                  "col-span-2 w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all duration-150",
-                  selected
-                    ? "border-primary bg-primary/5 text-primary"
-                    : "border-dashed border-gray-300 bg-white text-gray-500 hover:border-gray-400 hover:text-gray-700"
-                )}
-              >
-                <span className="text-lg">🔗</span>
-                <span className="flex-1 text-left leading-snug">{label}</span>
-                {selected && <Check className="w-4 h-4 flex-shrink-0" />}
-              </button>
-            );
-          })}
           {PRESET_ROOMS.map(({ label, emoji }) => {
             const count = roomMap[label] ?? 0;
             const selected = count > 0;
-            const blocked = blockedRooms.has(label);
             return (
               <div key={label}>
                 {selected ? (
@@ -294,14 +254,8 @@ export function Step1Household({ rooms, homeName, homeSize, setupFor, onUpdate }
                 ) : (
                   // Compact toggle chip
                   <button
-                    onClick={() => !blocked && tapPreset(label)}
-                    disabled={blocked}
-                    className={cn(
-                      "w-full h-11 flex items-center gap-2 px-3 rounded-xl border-2 text-sm font-medium transition-all duration-150",
-                      blocked
-                        ? "border-border bg-gray-50 text-gray-300 cursor-not-allowed"
-                        : "border-border bg-white text-gray-700 hover:border-gray-300"
-                    )}
+                    onClick={() => tapPreset(label)}
+                    className="w-full h-11 flex items-center gap-2 px-3 rounded-xl border-2 border-border bg-white text-gray-700 hover:border-gray-300 text-sm font-medium transition-all duration-150"
                   >
                     <span className="text-lg flex-shrink-0">{emoji}</span>
                     <span className="text-xs leading-tight text-left">{label}</span>
@@ -335,7 +289,7 @@ export function Step1Household({ rooms, homeName, homeSize, setupFor, onUpdate }
             value={customRoom}
             onChange={(e) => setCustomRoom(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addCustomRoom()}
-            placeholder="Add another room..."
+            placeholder="Anything else? e.g. Gym, Prayer Room..."
             className="flex-1 px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
           />
           <button

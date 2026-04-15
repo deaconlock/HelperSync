@@ -10,11 +10,12 @@ export default defineSchema({
       v.object({
         name: v.string(),
         role: v.union(
-          v.literal("Husband"),
-          v.literal("Wife"),
+          v.literal("Me"),
+          v.literal("Spouse"),
           v.literal("Child"),
           v.literal("Elderly"),
-          v.literal("Other")
+          v.literal("Pets"),
+          v.literal("Relative")
         ),
         age: v.optional(v.number()),
         mobilityLevel: v.optional(v.union(

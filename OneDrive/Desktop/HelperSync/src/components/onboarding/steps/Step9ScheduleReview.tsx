@@ -36,7 +36,6 @@ interface WizardContext {
   members: Array<{ name: string; role: string; age?: number }>;
   helperDetails: { name: string; nationality: string; language: string } | null;
   memberRoutines: Record<string, string>;
-  memberSchedules: Record<string, unknown>;
   priorities: string[];
   helperExperience: string | null;
   helperPace?: string;
@@ -901,7 +900,6 @@ export function Step9ScheduleReview({ weeklyTasks, rooms, onUpdate, onComplete, 
           members: wizardData.members,
           helperDetails: wizardData.helperDetails,
           memberRoutines: wizardData.memberRoutines,
-          memberSchedules: wizardData.memberSchedules,
           priorities: wizardData.priorities,
           helperExperience: wizardData.helperExperience ?? "some",
           helperPace: wizardData.helperPace ?? "balanced",

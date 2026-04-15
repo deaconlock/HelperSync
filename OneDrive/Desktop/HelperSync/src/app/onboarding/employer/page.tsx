@@ -34,7 +34,6 @@ import { useConvexAuth } from "convex/react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { HouseholdMember, HelperDetails } from "@/types/household";
-import { DayAvailability } from "@/types/schedule";
 import { DayTasks } from "@/types/timetable";
 
 export type Priority =
@@ -71,28 +70,15 @@ export interface WizardData {
   priorities: Priority[];
   routines: string; // kept for backward compat with localStorage
   memberRoutines: Record<string, string>;
-  memberSchedules: Record<string, DayAvailability>;
   memberQuietHours: Record<string, string>;
   servicePrefs: Record<string, string[]>;
   helperExperience: HelperExperience | null;
   helperPace: HelperPace;
-  employerAvailability: DayAvailability | null; // derived from memberSchedules for Convex
-  wifeAvailability: DayAvailability | null; // derived from memberSchedules for Convex
   helperDetails: HelperDetails | null;
   inviteCode: string;
   inviteQrData: string;
   weeklyTasks: DayTasks[] | null;
 }
-
-const emptyAvailability: DayAvailability = {
-  monday: [],
-  tuesday: [],
-  wednesday: [],
-  thursday: [],
-  friday: [],
-  saturday: [],
-  sunday: [],
-};
 
 const initialData: WizardData = {
   setupFor: null,
@@ -110,13 +96,10 @@ const initialData: WizardData = {
   priorities: [],
   routines: "",
   memberRoutines: {},
-  memberSchedules: {},
   memberQuietHours: {},
   servicePrefs: {},
   helperExperience: null,
   helperPace: "balanced",
-  employerAvailability: null,
-  wifeAvailability: null,
   helperDetails: null,
   inviteCode: "",
   inviteQrData: "",
@@ -133,7 +116,6 @@ function EmployerOnboardingPage() {
   const searchParams = useSearchParams();
   const createHousehold = useMutation(api.households.createHousehold);
   const setTimetable = useMutation(api.timetable.setTimetable);
-  const setSchedule = useMutation(api.schedules.setSchedule);
 
   const [step, setStep] = useState(1);
   const [data, setData] = useState<WizardData>(initialData);
@@ -330,8 +312,7 @@ function EmployerOnboardingPage() {
   }, []);
 
   const handleNext = () => {
-    if (step === 1) { goToStep(1.5); return; }
-    if (step === 1.5) { goToStep(2); return; }
+    if (step === 1.5) { goToStep(4); return; }
     if (step === 5) {
       // Segment 1: Mon/Tue/Wed — fires while user reads portrait cards on step 6
       setSeg1Result(null);
@@ -352,8 +333,9 @@ function EmployerOnboardingPage() {
     goToStep(Math.min(step + 1, TOTAL_STEPS));
   };
   const handleBack = () => {
-    if (step === 1.5) { goToStep(1); return; }
+    if (step === 1.5) { goToStep(3.5); return; }
     if (step === 3.5) { goToStep(3); return; }
+    if (step === 4) { goToStep(1.5); return; }
     goToStep(Math.max(step - 1, 1));
   };
   const handleStepClick = (targetStep: number) => {
@@ -391,17 +373,6 @@ function EmployerOnboardingPage() {
         weeklyTasks: d.weeklyTasks as Parameters<typeof setTimetable>[0]["weeklyTasks"],
       });
 
-      // Derive employer/partner availability from memberSchedules for Convex
-      const employerAv = d.memberSchedules["employer"] ?? d.employerAvailability;
-      const partnerKey = Object.keys(d.memberSchedules).find((k) => k !== "employer");
-      const partnerAv = partnerKey ? d.memberSchedules[partnerKey] : d.wifeAvailability;
-      if (employerAv) {
-        await setSchedule({
-          householdId,
-          employerAvailability: employerAv,
-          wifeAvailability: partnerAv ?? emptyAvailability,
-        });
-      }
 
       localStorage.removeItem("helpersync-wizard");
       localStorage.removeItem("helpersync-wizard-step");
@@ -690,7 +661,7 @@ function EmployerOnboardingPage() {
       canProceed={canProceed()}
       isLastStep={step === TOTAL_STEPS}
       wide={step === 7}
-      hideFooter={step === 7 || step === 8}
+      hideFooter={step === 7 || step === 8 || showStep4Reward}
     >
       {step === 1 && (
         <Step1Household
@@ -715,22 +686,38 @@ function EmployerOnboardingPage() {
         <Step2Members
           members={data.members}
           setupFor={data.setupFor}
-          onUpdate={(members) => updateData({ members })}
+          onUpdate={(members) => {
+            // Merge time presets into memberRoutines as plain text for the AI
+            const presetRoutines: Record<string, string> = { ...data.memberRoutines };
+            members.forEach((m, i) => {
+              const key = m.name.toLowerCase().replace(/\s+/g, "-") || `member-${i}`;
+              const presetText = m.timePresets && m.timePresets.length > 0
+                ? `Usually home: ${m.timePresets.map((p) =>
+                    p === "morning" ? "mornings" : p === "afternoon" ? "afternoons" : p === "evening" ? "evenings" : "all day"
+                  ).join(", ")}`
+                : "";
+              // Only set/overwrite the preset line — preserve any existing routine chips
+              const existing = presetRoutines[key] ?? "";
+              const withoutOldPreset = existing.split("\n").filter((l) => !l.startsWith("Usually home:")).join("\n");
+              presetRoutines[key] = [presetText, withoutOldPreset].filter(Boolean).join("\n");
+            });
+            updateData({ members, memberRoutines: presetRoutines });
+          }}
         />
       )}
       {step === 3 && (
         <Step4DailyLife
           members={data.members}
           memberRoutines={data.memberRoutines}
-          memberSchedules={data.memberSchedules}
           memberQuietHours={data.memberQuietHours}
           setupFor={data.setupFor}
           showReward={showStep4Reward}
           onUpdate={(routines, schedules) =>
-            updateData({ memberRoutines: routines, memberSchedules: schedules })
+            updateData({ memberRoutines: routines })
           }
           onQuietHoursUpdate={(memberQuietHours) => updateData({ memberQuietHours })}
           onComplete={() => { setShowStep4Reward(false); goToStep(3.5); }}
+          onDismissReward={() => { setShowStep4Reward(false); goToStep(2); }}
         />
       )}
       {step === 3.5 && (
@@ -739,7 +726,7 @@ function EmployerOnboardingPage() {
           householdFocus={data.householdFocus}
           servicePrefs={data.servicePrefs}
           onUpdate={(servicePrefs) => updateData({ servicePrefs })}
-          onComplete={() => goToStep(4)}
+          onComplete={() => goToStep(1.5)}
         />
       )}
       {step === 4 && (
@@ -803,7 +790,6 @@ function EmployerOnboardingPage() {
             members: data.members,
             helperDetails: data.helperDetails,
             memberRoutines: data.memberRoutines,
-            memberSchedules: data.memberSchedules,
             priorities: data.priorities,
             helperExperience: data.helperExperience,
             helperPace: data.helperPace,

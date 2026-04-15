@@ -5,7 +5,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   showText?: boolean;
   className?: string;
   href?: string;
@@ -16,6 +16,7 @@ export function Logo({ size = "md", showText = true, className, href }: LogoProp
     sm: { icon: 24, text: "text-base" },
     md: { icon: 28, text: "text-lg" },
     lg: { icon: 36, text: "text-2xl" },
+    xl: { icon: 80, text: "text-4xl" },
   };
 
   const s = sizes[size];
@@ -27,7 +28,7 @@ export function Logo({ size = "md", showText = true, className, href }: LogoProp
         alt="HelperSync logo"
         width={s.icon}
         height={s.icon}
-        className="flex-shrink-0 rounded-md"
+        className="flex-shrink-0"
       />
       {showText && (
         <span className={cn("font-semibold tracking-tight text-gray-900", s.text)}>
