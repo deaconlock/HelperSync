@@ -1,0 +1,166 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: onboarding\employer.spec.ts >> Step 2 — Household >> Continue disabled with no rooms selected
+- Location: tests\onboarding\employer.spec.ts:69:3
+
+# Error details
+
+```
+Error: expect(locator).toBeDisabled() failed
+
+Locator:  getByRole('button', { name: 'Continue' })
+Expected: disabled
+Received: enabled
+Timeout:  15000ms
+
+Call log:
+  - Expect "toBeDisabled" with timeout 15000ms
+  - waiting for getByRole('button', { name: 'Continue' })
+    18 × locator resolved to <button class="flex-1 py-3.5 rounded-xl font-display font-semibold transition-all duration-200 bg-gray-900 text-white hover:bg-gray-800 shadow-sm hover:shadow-md">Continue</button>
+       - unexpected value "enabled"
+
+```
+
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]:
+            - img [ref=e7]
+            - generic [ref=e13]: HelperSync
+          - generic [ref=e14]:
+            - paragraph [ref=e15]: Your Home
+            - generic [ref=e16]: Step 2 of 9
+        - button "Go back to step 1" [ref=e18] [cursor=pointer]
+    - main [ref=e27]:
+      - generic [ref=e29]:
+        - generic [ref=e30]:
+          - img [ref=e32]
+          - heading "Your home, your helper's workplace" [level=2] [ref=e35]
+          - paragraph [ref=e36]: Select the rooms and areas — we'll build the schedule around them.
+        - generic [ref=e37]:
+          - generic [ref=e38]: Home name (optional)
+          - textbox "e.g. The Smith Family Home" [ref=e39]: The Test Family Home
+        - generic [ref=e40]:
+          - generic [ref=e42]: What rooms does your home have?
+          - generic [ref=e43]:
+            - button "Kitchen + Dining (open-plan)" [ref=e44] [cursor=pointer]
+            - button "Living + Dining (open-plan)" [ref=e45] [cursor=pointer]
+          - generic [ref=e46]:
+            - button "Master Bedroom" [ref=e48] [cursor=pointer]:
+              - img [ref=e49]
+              - text: Master Bedroom
+            - button "Common Bedroom" [ref=e52] [cursor=pointer]
+            - button "Living Room" [ref=e54] [cursor=pointer]:
+              - img [ref=e55]
+              - text: Living Room
+            - button "Kitchen" [ref=e58] [cursor=pointer]:
+              - img [ref=e59]
+              - text: Kitchen
+            - button "Dining Area" [ref=e62] [cursor=pointer]
+            - generic [ref=e64]:
+              - button "Remove one Bathroom" [ref=e65] [cursor=pointer]:
+                - img [ref=e66]
+              - generic [ref=e67]: Bathroom
+              - button "Add one more Bathroom" [ref=e68] [cursor=pointer]:
+                - img [ref=e69]
+            - button "Helper's Room" [ref=e71] [cursor=pointer]
+            - button "Yard / Service Area" [ref=e73] [cursor=pointer]
+            - button "Store Room" [ref=e75] [cursor=pointer]
+            - button "Study Room" [ref=e77] [cursor=pointer]
+            - button "Balcony" [ref=e79] [cursor=pointer]
+          - generic [ref=e80]:
+            - textbox "Add another room..." [ref=e81]
+            - button [disabled] [ref=e82]:
+              - img [ref=e83]
+        - generic [ref=e84]:
+          - heading "How big is your home?" [level=3] [ref=e85]
+          - generic [ref=e86]:
+            - button "🏠 Compact ~700 sqft / 65 sqm" [ref=e87] [cursor=pointer]:
+              - generic [ref=e88]: 🏠
+              - paragraph [ref=e89]: Compact
+              - paragraph [ref=e90]: ~700 sqft / 65 sqm
+            - button "🏡 Mid-size ~1,200 sqft / 110 sqm" [ref=e91] [cursor=pointer]:
+              - generic [ref=e92]: 🏡
+              - paragraph [ref=e93]: Mid-size
+              - paragraph [ref=e94]: ~1,200 sqft / 110 sqm
+            - button "🏘️ Spacious 1,500+ sqft / 140+ sqm" [ref=e95] [cursor=pointer]:
+              - generic [ref=e96]: 🏘️
+              - paragraph [ref=e97]: Spacious
+              - paragraph [ref=e98]: 1,500+ sqft / 140+ sqm
+          - paragraph [ref=e99]: Helps us estimate how long cleaning tasks take
+        - button "🧽 Periodic deep cleaning Tasks most people forget — we'll rotate them into the weekly schedule" [ref=e101] [cursor=pointer]:
+          - generic [ref=e102]: 🧽
+          - generic [ref=e103]:
+            - heading "Periodic deep cleaning" [level=3] [ref=e104]
+            - paragraph [ref=e105]: Tasks most people forget — we'll rotate them into the weekly schedule
+          - img [ref=e106]
+    - contentinfo [ref=e108]:
+      - generic [ref=e109]:
+        - button "Back" [ref=e110] [cursor=pointer]:
+          - img [ref=e111]
+          - text: Back
+        - button "Continue" [ref=e113] [cursor=pointer]
+  - region "Notifications alt+T"
+  - 'button "DEV: Reset" [ref=e115] [cursor=pointer]':
+    - img [ref=e116]
+    - text: "DEV: Reset"
+  - button "Open Next.js Dev Tools" [ref=e124] [cursor=pointer]:
+    - img [ref=e125]
+  - alert [ref=e128]
+```
+
+# Test source
+
+```ts
+  1  | import { Page, expect } from "@playwright/test";
+  2  | 
+  3  | export function attachConsoleErrorListener(page: Page): string[] {
+  4  |   const errors: string[] = [];
+  5  |   page.on("console", (msg) => {
+  6  |     if (msg.type() === "error") errors.push(msg.text());
+  7  |   });
+  8  |   page.on("pageerror", (err) => errors.push(`[pageerror] ${err.message}`));
+  9  |   return errors;
+  10 | }
+  11 | 
+  12 | export function attachNetworkFailureListener(page: Page): string[] {
+  13 |   const failures: string[] = [];
+  14 |   page.on("response", (response) => {
+  15 |     if (
+  16 |       response.status() >= 400 &&
+  17 |       !response.url().includes("clerk") &&
+  18 |       !response.url().includes("convex.cloud")
+  19 |     ) {
+  20 |       failures.push(`${response.status()} ${response.url()}`);
+  21 |     }
+  22 |   });
+  23 |   return failures;
+  24 | }
+  25 | 
+  26 | export async function assertStepIndicator(page: Page, stepNum: number) {
+  27 |   await expect(page.getByText(`Step ${stepNum} of 9`)).toBeVisible();
+  28 | }
+  29 | 
+  30 | export async function assertContinueEnabled(page: Page) {
+  31 |   const btn = page.getByRole("button", { name: "Continue" });
+  32 |   await expect(btn).toBeEnabled();
+  33 | }
+  34 | 
+  35 | export async function assertContinueDisabled(page: Page) {
+  36 |   const btn = page.getByRole("button", { name: "Continue" });
+> 37 |   await expect(btn).toBeDisabled();
+     |                     ^ Error: expect(locator).toBeDisabled() failed
+  38 | }
+  39 | 
+```
