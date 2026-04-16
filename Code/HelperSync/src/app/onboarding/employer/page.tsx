@@ -427,7 +427,7 @@ function EmployerOnboardingPage() {
       onBack={handleBack}
       canProceed={canProceed()}
       isLastStep={step === TOTAL_STEPS}
-      hideFooter={step === 3}
+      hideFooter={step === 3 || step === 4}
     >
       {step === 1 && (
         <Step1Household

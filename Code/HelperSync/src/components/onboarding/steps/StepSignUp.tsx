@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useSignUp, useAuth } from "@clerk/nextjs";
 import { useConvexAuth } from "convex/react";
 import { Loader2, Mail, Lock, User as UserIcon, ArrowRight, Eye, EyeOff } from "lucide-react";
-import Link from "next/link";
 
 interface StepSignUpProps {
   onComplete: () => Promise<void>;
@@ -304,16 +303,6 @@ export function StepSignUp({ onComplete }: StepSignUpProps) {
             <>Create Account <ArrowRight className="w-4 h-4" /></>
           )}
         </button>
-      </div>
-
-      {/* Sign-in link */}
-      <div className="text-center mt-6">
-        <Link
-          href="/sign-in?redirect_url=/onboarding/employer?completing=true"
-          className="text-sm text-gray-400 hover:text-primary transition-colors"
-        >
-          Already have an account? <span className="font-medium">Sign in</span>
-        </Link>
       </div>
     </div>
   );
