@@ -90,7 +90,7 @@ export function Step2Members({ members, setupFor, onUpdate }: Step2Props) {
     const isFirst = localMembers.length === 0;
     const newMember: HouseholdMember = {
       name: "",
-      role: isFirst ? "Me" : "Spouse",
+      role: isFirst ? "Me" : undefined,
       age: undefined,
       timePresets: [],
     };

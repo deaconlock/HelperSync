@@ -44,26 +44,6 @@ const ALL_QUESTIONS: Question[] = [
   // ── Section 1: Household Setup ───────────────────────────────────────────
 
   {
-    id: "busyness",
-    section: 1,
-    sectionLabel: "Household Setup",
-    text: "How busy is your home on weekdays?",
-    options: [
-      { value: "calm",     emoji: "🧘", label: "Calm",     sub: "Light upkeep" },
-      { value: "moderate", emoji: "🧼", label: "Moderate", sub: "Daily cleaning + some care" },
-      { value: "busy",     emoji: "🔥", label: "Busy",     sub: "High workload, lots going on" },
-    ],
-    toLines: (a) => {
-      const map: Record<string, string> = {
-        "calm":     "Light workload — calm household",
-        "moderate": "Moderate workload — daily cleaning and some care",
-        "busy":     "High workload — busy household with children or dependents",
-      };
-      return [map[a as string]];
-    },
-  },
-
-  {
     id: "helper_hours",
     section: 1,
     sectionLabel: "Household Setup",
@@ -426,6 +406,8 @@ interface Step4Props {
   memberQuietHours: Record<string, string>;
   setupFor: SetupFor | null;
   showReward: boolean;
+  initialAnswers?: Record<string, string | string[]>;
+  startAtLast?: boolean;
   onUpdate: (routines: Record<string, string>, schedules?: unknown) => void;
   onQuietHoursUpdate: (quietHours: Record<string, string>) => void;
   onComplete: (householdRoutine: string, answers: Record<string, string | string[]>) => void;
@@ -436,11 +418,22 @@ interface Step4Props {
 
 export function Step4DailyLife({
   members,
+  initialAnswers,
+  startAtLast,
   onComplete,
   onDismissReward,
 }: Step4Props) {
-  const [questionIdx, setQuestionIdx] = useState(0);
-  const [answers, setAnswers]         = useState<Answers>({});
+  const [answers, setAnswers] = useState<Answers>(initialAnswers ?? {});
+
+  const visibleQuestionsForInit = useMemo(
+    () => ALL_QUESTIONS.filter(q => !q.showIf || q.showIf(initialAnswers ?? {}, members)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  const [questionIdx, setQuestionIdx] = useState(
+    startAtLast ? Math.max(0, visibleQuestionsForInit.length - 1) : 0,
+  );
 
   // Build visible question list based on current answers + members
   const visibleQuestions = useMemo(

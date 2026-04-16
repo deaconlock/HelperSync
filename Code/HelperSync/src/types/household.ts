@@ -4,7 +4,7 @@ export type TimePreset = "morning" | "afternoon" | "evening" | "allday";
 
 export interface HouseholdMember {
   name: string;
-  role: MemberRole;
+  role?: MemberRole;
   age?: number;
   timePresets?: TimePreset[];
   // Elderly-specific fields

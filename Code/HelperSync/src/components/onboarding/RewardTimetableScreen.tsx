@@ -11,10 +11,13 @@ import { cn } from "@/lib/utils";
 type TaskCategory = "cooking" | "cleaning" | "laundry" | "care" | "break" | "prep" | "walk";
 
 interface DraftTask {
-  time: number;     // minutes from midnight
+  time: number;        // minutes from midnight
   label: string;
   category: TaskCategory;
   room?: string;
+  hint?: string;       // reasoning hint shown under label
+  soft?: boolean;      // if true, show softLabel instead of precise time
+  softLabel?: string;  // e.g. "Morning", "Afternoon"
 }
 
 // ── Category styles ────────────────────────────────────────────────────────────
@@ -40,6 +43,37 @@ function fmt(mins: number): string {
   return `${hr}:${m.toString().padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
 }
 
+function fmtHint(mins: number): string {
+  const h  = Math.floor(mins / 60) % 24;
+  const m  = mins % 60;
+  const hr = h > 12 ? h - 12 : h === 0 ? 12 : h;
+  return `${hr}:${m.toString().padStart(2, "0")} ${h >= 12 ? "pm" : "am"}`;
+}
+
+// ── Member helpers ─────────────────────────────────────────────────────────────
+
+function hasBaby(members: HouseholdMember[])    { return members.some(m => m.role === "Child" && m.age === 0); }
+function hasChild(members: HouseholdMember[])   { return members.some(m => m.role === "Child" && (m.age ?? 0) > 0 && m.age !== 15); }
+function hasElderly(members: HouseholdMember[]) { return members.some(m => m.role === "Elderly"); }
+function hasPets(members: HouseholdMember[])    { return members.some(m => m.role === "Pets"); }
+
+// ── Intelligence line ──────────────────────────────────────────────────────────
+
+function buildIntelligenceLine(
+  answers: Record<string, string | string[]>,
+  members: HouseholdMember[],
+): string {
+  const parts: string[] = [];
+  if (hasBaby(members) || hasChild(members)) parts.push("childcare needs");
+  if (hasElderly(members)) parts.push("elderly care");
+  if (hasPets(members)) parts.push("your pet's routine");
+  if ((answers.dinner_time as string) >= "1830") parts.push("late evenings");
+  if (answers.leave_time === "700") parts.push("early mornings");
+
+  if (parts.length === 0) return "Balances cleaning and meals across your day";
+  return `Built around your ${parts.slice(0, 2).join(" and ")}`;
+}
+
 // ── Draft builder ──────────────────────────────────────────────────────────────
 
 function buildDraft(
@@ -48,7 +82,6 @@ function buildDraft(
   rooms: string[],
   homeSize: "compact" | "midsize" | "spacious",
 ): DraftTask[] {
-  // Key time anchors
   const helperStart = answers.helper_hours === "630_830" ? T(6, 30) : T(7, 0);
 
   const leaveMap: Record<string, number> = {
@@ -65,14 +98,8 @@ function buildDraft(
   };
   const dinner = dinnerMap[answers.dinner_time as string] ?? T(19, 0);
 
-  // Member flags
-  const hasBaby    = members.some(m => m.role === "Child" && m.age === 0);
-  const hasChild   = members.some(m => m.role === "Child" && (m.age ?? 0) > 0 && m.age !== 15);
-  const hasElderly = members.some(m => m.role === "Elderly");
-  const hasPets    = members.some(m => m.role === "Pets");
-  const petWalks   = hasPets ? parseInt(String(answers.pets_walks ?? "2"), 10) : 0;
+  const petWalks = hasPets(members) ? parseInt(String(answers.pets_walks ?? "2"), 10) : 0;
 
-  // Room flags
   const r = rooms.map(x => x.toLowerCase());
   const hasKitchen  = r.some(x => x.includes("kitchen"));
   const hasBath     = r.some(x => x.includes("bathroom"));
@@ -82,37 +109,74 @@ function buildDraft(
   const tasks: DraftTask[] = [];
 
   // ── Morning ────────────────────────────────────────────────
-  tasks.push({ time: helperStart,      label: "Morning kitchen setup & breakfast prep", category: "cooking",  room: hasKitchen ? "Kitchen" : undefined });
-  if (hasBaby)    tasks.push({ time: helperStart + 10, label: "Morning baby feed & settle",             category: "care" });
-  if (hasElderly) tasks.push({ time: helperStart + 15, label: "Assist with morning routine",            category: "care" });
-  if (petWalks >= 1) tasks.push({ time: helperStart + 20, label: "Morning pet walk",                   category: "walk" });
-  if (hasChild && leave)
-    tasks.push({ time: leave - 25, label: "School run prep",                            category: "prep" });
+  tasks.push({
+    time: helperStart,
+    label: "Morning kitchen setup & breakfast prep",
+    category: "cooking",
+    room: hasKitchen ? "Kitchen" : undefined,
+    hint: `Based on your ${fmtHint(helperStart)} start`,
+  });
+  if (hasBaby(members))    tasks.push({ time: helperStart + 10, label: "Morning baby feed & settle",   category: "care",    hint: "Based on your baby's routine" });
+  if (hasElderly(members)) tasks.push({ time: helperStart + 15, label: "Assist with morning routine",  category: "care" });
+  if (petWalks >= 1)       tasks.push({ time: helperStart + 20, label: "Morning pet walk",             category: "walk",    hint: "Based on your pets" });
+  if (hasChild(members) && leave)
+    tasks.push({ time: leave - 25, label: "School run prep", category: "prep", hint: "Based on your morning schedule" });
 
   // ── Cleaning block ─────────────────────────────────────────
   const cleanStart = leave ? leave + 15 : helperStart + 75;
-  if (hasBedrooms) tasks.push({ time: cleanStart,      label: "Bedrooms — make beds & tidy",            category: "cleaning", room: "Bedrooms" });
-  if (hasLiving)   tasks.push({ time: cleanStart + 40, label: "Living room — dust & vacuum",             category: "cleaning", room: "Living Room" });
-  tasks.push({ time: cleanStart + (homeSize === "compact" ? 60 : 80), label: "Floors & common areas",   category: "cleaning" });
+  if (hasBedrooms) tasks.push({ time: cleanStart,      label: "Bedrooms — make beds & tidy",  category: "cleaning", room: "Bedrooms" });
+  if (hasLiving)   tasks.push({ time: cleanStart + 40, label: "Living room — dust & vacuum",   category: "cleaning", room: "Living Room" });
+  tasks.push({
+    time: cleanStart + (homeSize === "compact" ? 60 : 80),
+    label: "Floors & common areas",
+    category: "cleaning",
+    soft: true,
+    softLabel: "Midday",
+  });
 
   // ── Laundry ────────────────────────────────────────────────
-  tasks.push({ time: cleanStart + 30, label: "Laundry — wash & hang", category: "laundry" });
+  tasks.push({
+    time: cleanStart + 30,
+    label: "Laundry — wash & hang",
+    category: "laundry",
+    soft: true,
+    softLabel: "Morning",
+  });
 
   // ── Midday ─────────────────────────────────────────────────
-  tasks.push({ time: T(12, 0),  label: "Lunch prep & serve",    category: "cooking" });
-  tasks.push({ time: T(12, 30), label: "Helper lunch break",    category: "break" });
+  tasks.push({ time: T(12, 0),  label: "Lunch prep & serve",  category: "cooking" });
+  tasks.push({ time: T(12, 30), label: "Helper lunch break",  category: "break" });
 
   // ── Afternoon ──────────────────────────────────────────────
-  if (hasBaby)    tasks.push({ time: T(14, 0),  label: "Afternoon baby feed",   category: "care" });
-  tasks.push({ time: T(14, 15), label: "Ironing & folding",     category: "laundry" });
-  if (hasBath)    tasks.push({ time: T(15, 0),  label: "Bathroom clean",        category: "cleaning", room: "Bathrooms" });
-  if (petWalks >= 2) tasks.push({ time: T(16, 30), label: "Evening pet walk",    category: "walk" });
+  if (hasBaby(members)) tasks.push({ time: T(14, 0), label: "Afternoon baby feed", category: "care", hint: "Based on your baby's routine" });
+  tasks.push({
+    time: T(14, 15),
+    label: "Ironing & folding",
+    category: "laundry",
+    soft: true,
+    softLabel: "Afternoon",
+  });
+  if (hasBath) tasks.push({
+    time: T(15, 0),
+    label: "Bathroom clean",
+    category: "cleaning",
+    room: "Bathrooms",
+    soft: true,
+    softLabel: "Afternoon",
+  });
+  if (petWalks >= 2) tasks.push({ time: T(16, 30), label: "Evening pet walk", category: "walk", hint: "Based on your pets" });
 
   // ── Evening ────────────────────────────────────────────────
-  tasks.push({ time: dinner - 75, label: "Dinner prep",                                  category: "cooking", room: hasKitchen ? "Kitchen" : undefined });
-  tasks.push({ time: dinner,      label: "Dinner served",                                category: "cooking" });
-  tasks.push({ time: dinner + 30, label: "Kitchen & dining cleanup",                     category: "cleaning", room: hasKitchen ? "Kitchen" : undefined });
-  tasks.push({ time: dinner + 60, label: "Evening reset & prep for tomorrow",            category: "prep" });
+  tasks.push({
+    time: dinner - 75,
+    label: "Dinner prep",
+    category: "cooking",
+    room: hasKitchen ? "Kitchen" : undefined,
+    hint: `Planned around your ${fmtHint(dinner)} dinner`,
+  });
+  tasks.push({ time: dinner,      label: "Dinner served",                     category: "cooking" });
+  tasks.push({ time: dinner + 30, label: "Kitchen & dining cleanup",           category: "cleaning", room: hasKitchen ? "Kitchen" : undefined });
+  tasks.push({ time: dinner + 60, label: "Evening reset & prep for tomorrow",  category: "prep" });
 
   return tasks
     .filter(task => task.time >= helperStart)
@@ -150,6 +214,25 @@ function buildFacts(data: WizardData): { emoji: string; label: string }[] {
   return facts;
 }
 
+// ── Ghost card ─────────────────────────────────────────────────────────────────
+
+function GhostCard({ wide = false }: { wide?: boolean }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="w-[52px] flex-shrink-0 pt-2.5">
+        <div className="h-2 w-8 bg-gray-200 rounded" />
+      </div>
+      <div className="flex-shrink-0 pt-3">
+        <div className="w-2 h-2 rounded-full bg-gray-200" />
+      </div>
+      <div className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl border border-gray-100 bg-gray-50">
+        <div className="w-5 h-5 rounded-full bg-gray-200 flex-shrink-0" />
+        <div className={cn("h-2 bg-gray-200 rounded", wide ? "w-3/4" : "w-1/2")} />
+      </div>
+    </div>
+  );
+}
+
 // ── Component ──────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -167,32 +250,21 @@ export function RewardTimetableScreen({ data, onContinue, onBack }: Props) {
   );
 
   const facts = useMemo(() => buildFacts(data), [data]);
+  const intelligenceLine = useMemo(() => buildIntelligenceLine(answers, data.members), [answers, data.members]);
 
   const homeName = data.homeName || "your home";
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
 
-      {/* ── Back button ── */}
-      {onBack && (
-        <div className="px-6 pt-6">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-1.5 text-sm text-text-muted hover:text-gray-900 transition-colors duration-150"
-          >
-            <ArrowLeft className="w-4 h-4" /> Back
-          </button>
-        </div>
-      )}
-
       {/* ── Header ── */}
       <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background px-6 pt-8 pb-8">
         <div className="text-3xl mb-3">✨</div>
         <h1 className="text-2xl font-display font-bold text-gray-900 leading-snug mb-2">
-          Your household, understood
+          Your Monday, planned
         </h1>
         <p className="text-sm text-text-secondary mb-5">
-          Here's a draft Monday for {homeName}. We'll sharpen this with a few more details next.
+          Built around your {homeName} routine
         </p>
 
         {/* Summary chips */}
@@ -209,38 +281,12 @@ export function RewardTimetableScreen({ data, onContinue, onBack }: Props) {
         </div>
       </div>
 
-      {/* ── Day tabs ── */}
-      <div className="px-6 pt-5 pb-2">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, i) => (
-            <span
-              key={day}
-              className={cn(
-                "flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
-                i === 0
-                  ? "bg-primary text-white border-primary"
-                  : "bg-gray-100 text-gray-400 border-transparent",
-              )}
-            >
-              {i > 0 && <Lock className="w-2.5 h-2.5 inline mr-1 opacity-60" />}
-              {day}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Draft label ── */}
-      <div className="px-6 pt-1 pb-3 flex items-center gap-2">
-        <span className="text-xs font-semibold uppercase tracking-widest text-primary">Monday</span>
-        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium border border-amber-200">
-          Draft preview
-        </span>
-      </div>
+      {/* ── Intelligence line ── */}
+      <p className="text-xs text-gray-400 italic px-6 pt-4 pb-1">{intelligenceLine}</p>
 
       {/* ── Timeline ── */}
-      <div className="flex-1 px-6 pb-6 overflow-y-auto">
+      <div className="flex-1 px-6 pb-2 overflow-y-auto">
         <div className="relative">
-          {/* Vertical line */}
           <div className="absolute left-[52px] top-0 bottom-0 w-px bg-gray-100" />
 
           <div className="space-y-2">
@@ -251,7 +297,7 @@ export function RewardTimetableScreen({ data, onContinue, onBack }: Props) {
                   {/* Time */}
                   <div className="w-[52px] flex-shrink-0 pt-2.5">
                     <span className="text-[10px] font-medium text-gray-400 leading-none">
-                      {fmt(task.time)}
+                      {task.soft ? task.softLabel : fmt(task.time)}
                     </span>
                   </div>
 
@@ -268,41 +314,55 @@ export function RewardTimetableScreen({ data, onContinue, onBack }: Props) {
                     <span className="text-base leading-none flex-shrink-0">{cfg.emoji}</span>
                     <div className="min-w-0">
                       <p className={cn("font-medium text-xs leading-snug", cfg.text)}>{task.label}</p>
-                      {task.room && (
+                      {task.room && !task.hint && (
                         <p className="text-[10px] text-gray-400 mt-0.5">{task.room}</p>
+                      )}
+                      {task.hint && (
+                        <p className="text-[10px] text-primary/60 mt-0.5">{task.hint}</p>
                       )}
                     </div>
                   </div>
                 </div>
               );
             })}
-
-            {/* Locked days hint */}
-            <div className="flex items-start gap-3 pt-2">
-              <div className="w-[52px] flex-shrink-0" />
-              <div className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-gray-200 bg-gray-50">
-                <Lock className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                <p className="text-xs text-gray-400">
-                  Tue – Sun will be filled in once we know more
-                </p>
-              </div>
-            </div>
           </div>
+        </div>
+      </div>
+
+      {/* ── Peek + lock (Tue–Sun) ── */}
+      <div className="relative overflow-hidden px-6 mt-2" style={{ minHeight: 110 }}>
+        {/* Ghost cards */}
+        <div className="space-y-2 blur-sm opacity-30 pointer-events-none select-none">
+          <GhostCard wide />
+          <GhostCard />
+        </div>
+        {/* Gradient fade + overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/80 to-white flex flex-col items-center justify-end pb-3 gap-1">
+          <Lock className="w-4 h-4 text-gray-400" />
+          <p className="text-sm font-semibold text-gray-800">Unlock your full week</p>
+          <p className="text-xs text-gray-400 text-center px-8">AI-generated schedule across all 7 days</p>
         </div>
       </div>
 
       {/* ── Footer ── */}
       <div className="px-6 pb-8 pt-4 border-t border-border bg-background">
-        <p className="text-xs text-text-secondary text-center mb-3">
-          This is a rough draft — we'll personalise it with critical timings next
-        </p>
         <button
           onClick={onContinue}
           className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-gray-900 text-white font-semibold text-base hover:bg-gray-800 transition-colors"
         >
-          Let's personalise it
+          Get my full schedule
           <ArrowRight className="w-4 h-4" />
         </button>
+        {onBack && (
+          <div className="flex items-center justify-between mt-3">
+            <button
+              onClick={onBack}
+              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" /> Back
+            </button>
+          </div>
+        )}
       </div>
 
     </div>
