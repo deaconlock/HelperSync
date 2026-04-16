@@ -386,9 +386,9 @@ const SECTION_META: Record<number, { label: string; emoji: string }> = {
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
-function buildHouseholdRoutine(questions: Question[], answers: Answers): string {
+function buildHouseholdRoutine(questions: Question[], answers: Answers, members: HouseholdMember[]): string {
   return questions
-    .filter(q => !q.showIf || q.showIf(answers, []))
+    .filter(q => !q.showIf || q.showIf(answers, members))
     .flatMap(q => {
       const ans = answers[q.id];
       if (!ans || (Array.isArray(ans) && ans.length === 0)) return [];
@@ -470,7 +470,7 @@ export function Step4DailyLife({
 
   function handleContinue() {
     if (isLast) {
-      const routine = buildHouseholdRoutine(visibleQuestions, answers);
+      const routine = buildHouseholdRoutine(visibleQuestions, answers, members);
       onComplete(routine, answers);
     } else {
       setQuestionIdx(i => i + 1);

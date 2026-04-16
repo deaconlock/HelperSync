@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     const claude = getClaudeClient();
     const stream = claude.messages.stream({
       model: "claude-sonnet-4-6",
-      max_tokens: 9000,
+      max_tokens: 4000,
       messages: [{ role: "user", content: prompt }],
     });
 

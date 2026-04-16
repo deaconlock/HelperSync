@@ -207,8 +207,8 @@ function EmployerOnboardingPage() {
     }
   };
 
-  // Show loading screen while completing OAuth flow
-  if (searchParams.get("completing") === "true") {
+  // Show loading screen while completing OAuth flow (but not once generation has started)
+  if (searchParams.get("completing") === "true" && !showGenerating) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
         <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
@@ -408,8 +408,7 @@ function EmployerOnboardingPage() {
       <RewardTimetableScreen
         data={data}
         onContinue={() => {
-          // Start AI generation immediately — runs during sign-up
-          preGenPromiseRef.current = fetchTimetable(data);
+          // Generation already started when Step 3 completed — just proceed
           setShowRewardTimetable(false);
           goToStep(4);
         }}
@@ -475,7 +474,10 @@ function EmployerOnboardingPage() {
           onUpdate={(routines) => updateData({ memberRoutines: routines })}
           onQuietHoursUpdate={(memberQuietHours) => updateData({ memberQuietHours })}
           onComplete={(householdRoutine, dailyLifeAnswers) => {
-            updateData({ householdRoutine, dailyLifeAnswers });
+            const next = { householdRoutine, dailyLifeAnswers };
+            updateData(next);
+            // Start AI generation immediately while user views the reward screen
+            preGenPromiseRef.current = fetchTimetable({ ...data, ...next });
             setReturnedFromTimetable(false);
             setShowRewardTimetable(true);
           }}

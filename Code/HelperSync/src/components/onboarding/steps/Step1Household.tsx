@@ -155,6 +155,9 @@ export function Step1Household({ rooms, homeName, homeSize, setupFor, onUpdate }
         <p className="text-text-secondary text-sm max-w-md">
           We'll use this to figure out what needs cleaning and how long it takes.
         </p>
+        <p className="text-xs text-gray-400 mt-2">
+          Workloads are balanced across the week and designed to be fair and sustainable.
+        </p>
       </div>
 
       {/* Home name */}

@@ -83,11 +83,16 @@ export function WizardShell({
               );
             })}
           </div>
-          {nextLabel && !isLastStep && (
-            <p className="text-xs text-text-muted mt-1.5">
-              Next: <span className="font-medium text-gray-600">{nextLabel}</span>
-            </p>
-          )}
+          <div className="flex items-center justify-between mt-1.5">
+            {nextLabel && !isLastStep ? (
+              <p className="text-xs text-text-muted">
+                Next: <span className="font-medium text-gray-600">{nextLabel}</span>
+              </p>
+            ) : <span />}
+            {currentStep === 1 && (
+              <p className="text-xs text-gray-400">~3 min to complete</p>
+            )}
+          </div>
         </div>
       </header>
 
