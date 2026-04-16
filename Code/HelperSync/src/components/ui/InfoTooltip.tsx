@@ -46,7 +46,7 @@ export function InfoTooltip({ content, className }: InfoTooltipProps) {
         aria-label="More information"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="w-4 h-4 rounded-full text-gray-400 hover:text-gray-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
+        className="p-2 -m-2 rounded-full text-gray-400 hover:text-gray-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
       >
         <Info className="w-4 h-4" />
       </button>
@@ -54,7 +54,7 @@ export function InfoTooltip({ content, className }: InfoTooltipProps) {
       {open && (
         <div
           role="tooltip"
-          className="absolute left-6 top-1/2 -translate-y-1/2 z-30 w-56 bg-gray-900 text-white text-xs leading-relaxed rounded-xl px-3 py-2.5 shadow-lg"
+          className="absolute left-6 top-1/2 -translate-y-1/2 z-30 w-56 max-w-[calc(100vw-5rem)] bg-gray-900 text-white text-xs leading-relaxed rounded-xl px-3 py-2.5 shadow-lg"
         >
           {/* Arrow */}
           <span className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-gray-900 rotate-45 rounded-sm" />

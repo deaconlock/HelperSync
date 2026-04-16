@@ -22,7 +22,7 @@ interface Question {
   section: 1 | 2 | 3 | 4;
   sectionLabel: string;
   text: string;
-  options: QOption[];
+  options: QOption[] | ((answers: Answers, members: HouseholdMember[]) => QOption[]);
   multi?: boolean;
   skippable?: boolean;
   showIf?: (answers: Answers, members: HouseholdMember[]) => boolean;
@@ -44,26 +44,6 @@ const ALL_QUESTIONS: Question[] = [
   // ── Section 1: Household Setup ───────────────────────────────────────────
 
   {
-    id: "helper_hours",
-    section: 1,
-    sectionLabel: "Household Setup",
-    text: "What are your helper's working hours?",
-    options: [
-      { value: "630_830",  emoji: "🌅", label: "6:30 AM – 8:30 PM" },
-      { value: "700_900",  emoji: "☀️", label: "7:00 AM – 9:00 PM" },
-      { value: "700_1000", emoji: "🌙", label: "7:00 AM – 10:00 PM" },
-    ],
-    toLines: (a) => {
-      const map: Record<string, string> = {
-        "630_830":  "Helper works 6:30 AM – 8:30 PM",
-        "700_900":  "Helper works 7:00 AM – 9:00 PM",
-        "700_1000": "Helper works 7:00 AM – 10:00 PM",
-      };
-      return [map[a as string]];
-    },
-  },
-
-  {
     id: "busyness",
     section: 1,
     sectionLabel: "Household Setup",
@@ -71,7 +51,7 @@ const ALL_QUESTIONS: Question[] = [
     options: [
       { value: "calm",     emoji: "🧘", label: "Calm",     sub: "Light upkeep" },
       { value: "moderate", emoji: "🧼", label: "Moderate", sub: "Daily cleaning + some care" },
-      { value: "busy",     emoji: "🔥", label: "Busy",     sub: "Kids / baby / high workload" },
+      { value: "busy",     emoji: "🔥", label: "Busy",     sub: "High workload, lots going on" },
     ],
     toLines: (a) => {
       const map: Record<string, string> = {
@@ -83,31 +63,27 @@ const ALL_QUESTIONS: Question[] = [
     },
   },
 
-  // ── Section 2: Daily Anchors ─────────────────────────────────────────────
-
   {
-    id: "dinner_time",
-    section: 2,
-    sectionLabel: "Daily Anchors",
-    text: "When does your household usually have dinner?",
+    id: "helper_hours",
+    section: 1,
+    sectionLabel: "Household Setup",
+    text: "What are your helper's working hours?",
     options: [
-      { value: "1800", emoji: "🍽️", label: "6:00 PM" },
-      { value: "1830", emoji: "🍽️", label: "6:30 PM" },
-      { value: "1900", emoji: "🍽️", label: "7:00 PM" },
-      { value: "1930", emoji: "🍽️", label: "7:30 PM" },
-      { value: "2000", emoji: "🍽️", label: "8:00 PM" },
+      { value: "630_830",  emoji: "🌅", label: "6:30 AM – 8:30 PM", sub: "14 hrs · lighter household" },
+      { value: "700_900",  emoji: "☀️", label: "7:00 AM – 9:00 PM", sub: "14 hrs · typical arrangement" },
+      { value: "700_1000", emoji: "🌙", label: "7:00 AM – 10:00 PM", sub: "15 hrs · busy or late household" },
     ],
     toLines: (a) => {
       const map: Record<string, string> = {
-        "1800": "Dinner ready by 6:00 PM",
-        "1830": "Dinner ready by 6:30 PM",
-        "1900": "Dinner ready by 7:00 PM",
-        "1930": "Dinner ready by 7:30 PM",
-        "2000": "Dinner ready by 8:00 PM",
+        "630_830":  "Helper works 6:30 AM – 8:30 PM",
+        "700_900":  "Helper works 7:00 AM – 9:00 PM",
+        "700_1000": "Helper works 7:00 AM – 10:00 PM",
       };
       return [map[a as string]];
     },
   },
+
+  // ── Section 2: Daily Anchors ─────────────────────────────────────────────
 
   {
     id: "leave_time",
@@ -115,19 +91,19 @@ const ALL_QUESTIONS: Question[] = [
     sectionLabel: "Daily Anchors",
     text: "What time do adults usually leave home?",
     options: [
-      { value: "700",  emoji: "🚶", label: "7:00 AM" },
-      { value: "730",  emoji: "🚶", label: "7:30 AM" },
-      { value: "800",  emoji: "🚶", label: "8:00 AM" },
-      { value: "830",  emoji: "🚶", label: "8:30 AM" },
-      { value: "home", emoji: "🏠", label: "Mostly at home" },
+      { value: "700",  emoji: "🚶", label: "Before 7:30 AM",   sub: "Early start, long commute" },
+      { value: "800",  emoji: "🚶", label: "7:30 – 8:30 AM",   sub: "Typical office hours" },
+      { value: "900",  emoji: "🚶", label: "8:30 – 9:30 AM",   sub: "Flexible or late start" },
+      { value: "1000", emoji: "🚶", label: "9:30 AM or later", sub: "WFH mornings, part-time" },
+      { value: "home", emoji: "🏠", label: "Mostly at home",   sub: "Remote, retired, or caregiver" },
     ],
     toLines: (a) => {
       if (a === "home") return ["Adults mostly at home during the day"];
       const map: Record<string, string> = {
-        "700": "Adults leave home by 7:00 AM",
-        "730": "Adults leave home by 7:30 AM",
-        "800": "Adults leave home by 8:00 AM",
-        "830": "Adults leave home by 8:30 AM",
+        "700":  "Adults leave home before 7:30 AM",
+        "800":  "Adults leave home between 7:30 – 8:30 AM",
+        "900":  "Adults leave home between 8:30 – 9:30 AM",
+        "1000": "Adults leave home at 9:30 AM or later",
       };
       return [map[a as string]];
     },
@@ -139,11 +115,11 @@ const ALL_QUESTIONS: Question[] = [
     sectionLabel: "Daily Anchors",
     text: "What time do adults usually return home?",
     options: [
-      { value: "1730", emoji: "🌆", label: "5:30 PM" },
-      { value: "1800", emoji: "🌇", label: "6:00 PM" },
-      { value: "1830", emoji: "🌃", label: "6:30 PM" },
-      { value: "1900", emoji: "🌙", label: "7:00 PM" },
-      { value: "2000", emoji: "🌙", label: "8:00 PM+" },
+      { value: "1730", emoji: "🌆", label: "Before 6:00 PM",   sub: "Early finish or short commute" },
+      { value: "1800", emoji: "🌇", label: "6:00 – 7:00 PM",   sub: "Standard end of day" },
+      { value: "1830", emoji: "🌃", label: "7:00 – 8:00 PM",   sub: "After-work commute" },
+      { value: "1900", emoji: "🌙", label: "8:00 – 9:00 PM",   sub: "Late meetings or traffic" },
+      { value: "2000", emoji: "🌙", label: "After 9:00 PM",    sub: "Long hours or evening plans" },
     ],
     showIf: (a) => a.leave_time !== "home",
     toLines: (a) => {
@@ -153,6 +129,30 @@ const ALL_QUESTIONS: Question[] = [
         "1830": "Adults return home around 6:30 PM",
         "1900": "Adults return home around 7:00 PM",
         "2000": "Adults return home after 8:00 PM",
+      };
+      return [map[a as string]];
+    },
+  },
+
+  {
+    id: "dinner_time",
+    section: 2,
+    sectionLabel: "Daily Anchors",
+    text: "When does your household usually have dinner?",
+    options: [
+      { value: "1800", emoji: "🍽️", label: "6:00 PM", sub: "Early dinner, wind-down soon after" },
+      { value: "1830", emoji: "🍽️", label: "6:30 PM", sub: "Early-ish, relaxed pace" },
+      { value: "1900", emoji: "🍽️", label: "7:00 PM", sub: "Standard dinner time" },
+      { value: "1930", emoji: "🍽️", label: "7:30 PM", sub: "After adults return home" },
+      { value: "2000", emoji: "🍽️", label: "8:00 PM", sub: "Late dinner, adults back late" },
+    ],
+    toLines: (a) => {
+      const map: Record<string, string> = {
+        "1800": "Dinner ready by 6:00 PM",
+        "1830": "Dinner ready by 6:30 PM",
+        "1900": "Dinner ready by 7:00 PM",
+        "1930": "Dinner ready by 7:30 PM",
+        "2000": "Dinner ready by 8:00 PM",
       };
       return [map[a as string]];
     },
@@ -187,18 +187,20 @@ const ALL_QUESTIONS: Question[] = [
     sectionLabel: "Baby",
     text: "What time is your baby's bedtime?",
     options: [
-      { value: "1830", emoji: "🌆", label: "6:30 PM" },
-      { value: "1900", emoji: "🌇", label: "7:00 PM" },
-      { value: "1930", emoji: "🌙", label: "7:30 PM" },
-      { value: "2000", emoji: "🌙", label: "8:00 PM+" },
+      { value: "1900", emoji: "🌆", label: "Before 7:00 PM",    sub: "Very early, strict routine" },
+      { value: "1930", emoji: "🌇", label: "7:00 – 8:00 PM",   sub: "Standard infant bedtime" },
+      { value: "2000", emoji: "🌙", label: "8:00 – 9:00 PM",   sub: "Slightly later, more flexible" },
+      { value: "2100", emoji: "🌙", label: "9:00 – 10:00 PM",  sub: "Later household rhythm" },
+      { value: "2200", emoji: "🌙", label: "After 10:00 PM",   sub: "Baby follows the household" },
     ],
     showIf: (_, m) => hasBaby(m),
     toLines: (a) => {
       const map: Record<string, string> = {
-        "1830": "Baby bedtime at 6:30 PM — begin wind-down routine 30 min before",
-        "1900": "Baby bedtime at 7:00 PM — begin wind-down routine 30 min before",
-        "1930": "Baby bedtime at 7:30 PM — begin wind-down routine 30 min before",
-        "2000": "Baby bedtime after 8:00 PM — begin wind-down routine 30 min before",
+        "1900": "Baby bedtime before 7:00 PM — begin wind-down routine 30 min before",
+        "1930": "Baby bedtime between 7:00 – 8:00 PM — begin wind-down routine 30 min before",
+        "2000": "Baby bedtime between 8:00 – 9:00 PM — begin wind-down routine 30 min before",
+        "2100": "Baby bedtime between 9:00 – 10:00 PM — begin wind-down routine 30 min before",
+        "2200": "Baby bedtime after 10:00 PM — begin wind-down routine 30 min before",
       };
       return [map[a as string]];
     },
@@ -234,9 +236,9 @@ const ALL_QUESTIONS: Question[] = [
     sectionLabel: "Child",
     text: "What is your child's school schedule?",
     options: [
-      { value: "fullday", emoji: "🏫", label: "Full-day school" },
-      { value: "halfday", emoji: "🏫", label: "Half-day school" },
-      { value: "none",    emoji: "🏠", label: "Not in school" },
+      { value: "fullday", emoji: "🏫", label: "Full-day school", sub: "Home after 1:30 – 2:30 PM" },
+      { value: "halfday", emoji: "🏫", label: "Half-day school", sub: "Home by midday" },
+      { value: "none",    emoji: "🏠", label: "Not in school",   sub: "Home full-time" },
     ],
     showIf: (_, m) => hasChild(m),
     toLines: (a) =>
@@ -251,9 +253,9 @@ const ALL_QUESTIONS: Question[] = [
     sectionLabel: "Child",
     text: "Does your child need after-school care?",
     options: [
-      { value: "full",        emoji: "👀", label: "Full supervision" },
-      { value: "some",        emoji: "🔁", label: "Some supervision" },
-      { value: "independent", emoji: "👍", label: "Independent" },
+      { value: "full",        emoji: "👀", label: "Full supervision", sub: "Needs constant attention" },
+      { value: "some",        emoji: "🔁", label: "Some supervision", sub: "Check in periodically" },
+      { value: "independent", emoji: "👍", label: "Independent",      sub: "Manages on their own" },
     ],
     showIf: (a, m) => hasChild(m) && a.child_school !== "none",
     toLines: (a) =>
@@ -268,10 +270,10 @@ const ALL_QUESTIONS: Question[] = [
     sectionLabel: "Teen",
     text: "Does your teen need help with anything?",
     options: [
-      { value: "meals",   emoji: "🍽️", label: "Meals" },
-      { value: "laundry", emoji: "🧺", label: "Laundry" },
-      { value: "privacy", emoji: "🚪", label: "Privacy — minimal involvement" },
-      { value: "none",    emoji: "❌", label: "No help needed" },
+      { value: "meals",   emoji: "🍽️", label: "Meals",                      sub: "Breakfast, lunch, or dinner" },
+      { value: "laundry", emoji: "🧺", label: "Laundry",                    sub: "Washing and folding" },
+      { value: "privacy", emoji: "🚪", label: "Privacy — minimal involvement", sub: "Keep a respectful distance" },
+      { value: "none",    emoji: "❌", label: "No help needed",              sub: "Teen is fully independent" },
     ],
     multi: true,
     showIf: (_, m) => hasTeen(m),
@@ -293,9 +295,9 @@ const ALL_QUESTIONS: Question[] = [
     sectionLabel: "Elderly",
     text: "What level of care does your elderly family member need?",
     options: [
-      { value: "independent", emoji: "👍",    label: "Independent" },
-      { value: "some",        emoji: "🤝",    label: "Some help" },
-      { value: "full",        emoji: "🧑‍⚕️", label: "Full care" },
+      { value: "independent", emoji: "👍",    label: "Independent", sub: "Manages daily life on their own" },
+      { value: "some",        emoji: "🤝",    label: "Some help",   sub: "Mobility, meals, or reminders" },
+      { value: "full",        emoji: "🧑‍⚕️", label: "Full care",   sub: "Constant supervision needed" },
     ],
     showIf: (_, m) => hasElderly(m),
     toLines: (a) =>
@@ -327,10 +329,10 @@ const ALL_QUESTIONS: Question[] = [
     sectionLabel: "Pets",
     text: "How many walks does your pet need per day?",
     options: [
-      { value: "0", emoji: "🏠", label: "0 — indoor only" },
-      { value: "1", emoji: "🚶", label: "1 walk" },
-      { value: "2", emoji: "🚶", label: "2 walks" },
-      { value: "3", emoji: "🚶", label: "3+ walks" },
+      { value: "0", emoji: "🏠", label: "0 — indoor only", sub: "Litter box or indoor care only" },
+      { value: "1", emoji: "🚶", label: "1 walk",         sub: "Morning or evening" },
+      { value: "2", emoji: "🚶", label: "2 walks",        sub: "Morning and evening" },
+      { value: "3", emoji: "🚶", label: "3+ walks",       sub: "High energy breed" },
     ],
     showIf: (_, m) => hasPets(m),
     toLines: (a) =>
@@ -345,15 +347,25 @@ const ALL_QUESTIONS: Question[] = [
     section: 4,
     sectionLabel: "Preferences",
     text: "What should the helper prioritise when things overlap?",
-    options: [
-      { value: "childcare", emoji: "👶", label: "Childcare first" },
-      { value: "meals",     emoji: "🍽️", label: "Meals first" },
-      { value: "cleaning",  emoji: "🧹", label: "Cleaning first" },
-      { value: "balance",   emoji: "⚖️", label: "Balance everything equally" },
+    options: (_, members) => [
+      ...(hasBaby(members) || hasChild(members) || hasTeen(members) ? [
+        { value: "childcare", emoji: "👶", label: "Childcare first",  sub: "Safety and care over everything" },
+      ] : []),
+      ...(hasElderly(members) ? [
+        { value: "elderly", emoji: "👴", label: "Elderly care first", sub: "Health and comfort come first" },
+      ] : []),
+      ...(hasPets(members) ? [
+        { value: "pets", emoji: "🐾", label: "Pet care first",        sub: "Feeding and walks on schedule" },
+      ] : []),
+      { value: "meals",    emoji: "🍽️", label: "Meals first",               sub: "Timely meals are non-negotiable" },
+      { value: "cleaning", emoji: "🧹", label: "Cleaning first",            sub: "A tidy home matters most" },
+      { value: "balance",  emoji: "⚖️", label: "Balance everything equally", sub: "No single task takes precedence" },
     ],
     toLines: (a) => {
       const map: Record<string, string> = {
         "childcare": "Top priority: childcare over cleaning or errands",
+        "elderly":   "Top priority: elderly care over cleaning or errands",
+        "pets":      "Top priority: pet care — feeding and walks on schedule",
         "meals":     "Top priority: meals ready on time over other tasks",
         "cleaning":  "Top priority: keep home clean and tidy",
         "balance":   "Balance all tasks equally — no single priority",
@@ -416,7 +428,7 @@ interface Step4Props {
   showReward: boolean;
   onUpdate: (routines: Record<string, string>, schedules?: unknown) => void;
   onQuietHoursUpdate: (quietHours: Record<string, string>) => void;
-  onComplete: (householdRoutine: string) => void;
+  onComplete: (householdRoutine: string, answers: Record<string, string | string[]>) => void;
   onDismissReward: () => void;
 }
 
@@ -466,7 +478,7 @@ export function Step4DailyLife({
   function handleContinue() {
     if (isLast) {
       const routine = buildHouseholdRoutine(visibleQuestions, answers);
-      onComplete(routine);
+      onComplete(routine, answers);
     } else {
       setQuestionIdx(i => i + 1);
     }
@@ -543,7 +555,7 @@ export function Step4DailyLife({
         </h2>
 
         <div className="space-y-2.5 flex-1">
-          {currentQ.options.map(opt => {
+          {(typeof currentQ.options === "function" ? currentQ.options(answers, members) : currentQ.options).map(opt => {
             const sel = isSelected(opt.value);
             return (
               <button

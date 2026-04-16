@@ -213,54 +213,72 @@ export function Step1Household({ rooms, homeName, homeSize, setupFor, onUpdate }
           <label className="block text-sm font-medium text-gray-700 mb-0.5">
             Areas to clean
           </label>
-          <p className="text-xs text-gray-400">Tap to add. Tap again if you have more than one of the same.</p>
+          <p className="text-xs text-gray-400">Think in cleaning zones, not just rooms. If your kitchen and dining share a space, select both.</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        {/* Grid sized for 360–430px screens (today's typical mobile range).
+            390px iPhone: 358px content → 175px/chip after gap-2.
+            px-2.5 padding + w-5 stepper buttons keeps label ≥ 60px on 360px. */}
+        <div className="grid grid-cols-2 gap-2 items-stretch">
           {PRESET_ROOMS.map(({ label, emoji }) => {
             const count = roomMap[label] ?? 0;
             const selected = count > 0;
             return (
-              <div key={label}>
-                {selected ? (
-                  // Compact selected stepper
-                  <div className="w-full h-11 flex items-center gap-2 px-3 rounded-xl border-2 border-primary bg-primary/5 text-primary">
-                    <span className="text-lg flex-shrink-0">{emoji}</span>
-                    <span className="flex-1 text-xs font-medium leading-tight">
-                      {label}{count > 1 && <span className="font-bold"> ×{count}</span>}
-                    </span>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <button
-                        onClick={() => tapPreset(label)}
-                        className="w-6 h-6 rounded-full border border-primary/40 flex items-center justify-center hover:bg-primary/10 transition-colors"
-                        aria-label={`Remove one ${label}`}
-                      >
-                        <Minus className="w-3 h-3" />
-                      </button>
-                      <span className="text-xs font-semibold w-3 text-center">{count}</span>
-                      <button
-                        onClick={() => {
-                          const next = { ...roomMap, [label]: count + 1 };
-                          setRoomMap(next);
-                          emit(next, localHomeName, localSize);
-                        }}
-                        className="w-6 h-6 rounded-full border border-primary/40 flex items-center justify-center hover:bg-primary/10 transition-colors"
-                        aria-label={`Add one more ${label}`}
-                      >
-                        <Plus className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  // Compact toggle chip
-                  <button
-                    onClick={() => tapPreset(label)}
-                    className="w-full h-11 flex items-center gap-2 px-3 rounded-xl border-2 border-border bg-white text-gray-700 hover:border-gray-300 text-sm font-medium transition-all duration-150"
-                  >
-                    <span className="text-lg flex-shrink-0">{emoji}</span>
-                    <span className="text-xs leading-tight text-left">{label}</span>
-                  </button>
+              <div
+                key={label}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-2 rounded-xl border-2 transition-all duration-150",
+                  selected ? "border-primary bg-primary/5" : "border-border bg-white",
                 )}
+              >
+                {/* Emoji + label */}
+                <span className="text-sm flex-shrink-0">{emoji}</span>
+                <span className={cn(
+                  "flex-1 min-w-0 text-[10px] font-medium leading-tight",
+                  selected ? "text-primary" : "text-gray-700",
+                )}>
+                  {label}
+                </span>
+
+                {/* Stepper — w-5 h-5 to stay compact on small screens */}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => {
+                      if (count === 0) return;
+                      const next = { ...roomMap };
+                      if (count === 1) delete next[label]; else next[label] = count - 1;
+                      setRoomMap(next);
+                      emit(next, localHomeName, localSize);
+                    }}
+                    disabled={count === 0}
+                    aria-label={`Remove one ${label}`}
+                    className={cn(
+                      "w-5 h-5 rounded-full border flex items-center justify-center transition-colors",
+                      count > 0
+                        ? "border-primary/40 text-primary hover:bg-primary/10"
+                        : "border-gray-200 text-gray-200 cursor-not-allowed",
+                    )}
+                  >
+                    <Minus className="w-2.5 h-2.5" />
+                  </button>
+                  <span className={cn(
+                    "text-[10px] font-semibold w-3.5 text-center tabular-nums",
+                    selected ? "text-primary" : "text-gray-300",
+                  )}>
+                    {count}
+                  </span>
+                  <button
+                    onClick={() => {
+                      const next = { ...roomMap, [label]: count + 1 };
+                      setRoomMap(next);
+                      emit(next, localHomeName, localSize);
+                    }}
+                    aria-label={`Add one ${label}`}
+                    className="w-5 h-5 rounded-full border border-primary/40 text-primary flex items-center justify-center hover:bg-primary/10 transition-colors"
+                  >
+                    <Plus className="w-2.5 h-2.5" />
+                  </button>
+                </div>
               </div>
             );
           })}

@@ -87,14 +87,14 @@ function HelpTooltip({ content }: { content: string }) {
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? "Hide help" : "Show help"}
         aria-expanded={open}
-        className="text-white/50 hover:text-white/90 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded-full"
+        className="p-2 -m-2 text-white/50 hover:text-white/90 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded-full"
       >
         <HelpCircle className="w-4 h-4" />
       </button>
       {open && (
         <div
           role="tooltip"
-          className="absolute left-6 top-0 z-50 w-64 rounded-xl bg-white/95 text-gray-700 text-xs shadow-xl p-3 leading-relaxed"
+          className="absolute left-6 top-0 z-50 w-64 max-w-[calc(100vw-3rem)] rounded-xl bg-white/95 text-gray-700 text-xs shadow-xl p-3 leading-relaxed"
         >
           <button
             type="button"

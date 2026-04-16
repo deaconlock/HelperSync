@@ -56,7 +56,7 @@ function ageEmoji(age: number | undefined): string | null {
 // --- Helpers ---
 
 function showAgeFor(role: MemberRole): boolean {
-  return role === "Child" || role === "Elderly";
+  return role === "Child";
 }
 
 function ageRangesFor(role: MemberRole) {
@@ -216,7 +216,7 @@ export function Step2Members({ members, setupFor, onUpdate }: Step2Props) {
                         return (
                           <button
                             key={r.value}
-                            onClick={() => updateMember(i, { role: r.value })}
+                            onClick={() => updateMember(i, { role: r.value, age: r.value === "Elderly" ? 68 : r.value === "Child" ? member.age : undefined })}
                             className={cn(
                               "flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-medium transition-all duration-150",
                               isSelected ? r.selectedColor : r.color

@@ -29,6 +29,7 @@ import { SocialProofScreen } from "@/components/onboarding/SocialProofScreen";
 import { SurveyIntroScreen } from "@/components/onboarding/SurveyIntroScreen";
 import { SurveyQuestionScreen } from "@/components/onboarding/SurveyQuestionScreen";
 import { SurveyResultScreen } from "@/components/onboarding/SurveyResultScreen";
+import { RewardTimetableScreen } from "@/components/onboarding/RewardTimetableScreen";
 import { toast } from "sonner";
 import { useAuth } from "@clerk/nextjs";
 import { useConvexAuth } from "convex/react";
@@ -74,6 +75,7 @@ export interface WizardData {
   memberQuietHours: Record<string, string>;
   householdRoutine: string;
   routineRefinement: string;
+  dailyLifeAnswers: Record<string, string | string[]>;
   servicePrefsRoutine: string;
   helperExperience: HelperExperience | null;
   helperPace: HelperPace;
@@ -102,6 +104,7 @@ const initialData: WizardData = {
   memberQuietHours: {},
   householdRoutine: "",
   routineRefinement: "",
+  dailyLifeAnswers: {},
   servicePrefsRoutine: "",
   helperExperience: null,
   helperPace: "balanced",
@@ -138,6 +141,7 @@ function EmployerOnboardingPage() {
   const [showPersonaCard, setShowPersonaCard] = useState(false);
   const [showStep4Reward, setShowStep4Reward] = useState(false);
   const [showRefinement, setShowRefinement] = useState(false);
+  const [showRewardTimetable, setShowRewardTimetable] = useState(false);
   const [seg1Result, setSeg1Result] = useState<DayTasks[] | null>(null);
   const [seg2Result, setSeg2Result] = useState<DayTasks[] | null>(null);
   const [seg3Result, setSeg3Result] = useState<DayTasks[] | null>(null);
@@ -326,21 +330,15 @@ function EmployerOnboardingPage() {
       triggerSegment(data, ["monday", "tuesday", "wednesday"], setSeg1Result, () => setSeg1Error(true));
     }
     if (step === 6) {
-      // Segments 2+3 fire simultaneously as user enters the schedule editor
-      setSeg2Result(null);
-      setSeg3Result(null);
-      setSeg23Error(false);
-      triggerSegment(data, ["thursday", "friday", "saturday"], setSeg2Result, () => setSeg23Error(true));
-      triggerSegment(data, ["sunday"], setSeg3Result, () => setSeg23Error(true));
-      // Fallback: if segments don't arrive in 90s, show error + retry
-      if (seg23TimeoutRef.current) clearTimeout(seg23TimeoutRef.current);
-      seg23TimeoutRef.current = setTimeout(() => setSeg23Error(true), 90000);
+      // Show refinement screen before schedule editor — user has now seen the draft
+      setShowRefinement(true);
+      return;
     }
     goToStep(Math.min(step + 1, TOTAL_STEPS));
   };
   const handleBack = () => {
     if (step === 1.5) { goToStep(3.5); return; }
-    if (step === 3.5) { setShowRefinement(true); return; }
+    if (step === 3.5) { goToStep(3); return; }
     if (step === 4) { goToStep(1.5); return; }
     goToStep(Math.max(step - 1, 1));
   };
@@ -623,14 +621,33 @@ function EmployerOnboardingPage() {
     );
   }
 
+  if (showRewardTimetable && hydrated) {
+    return (
+      <RewardTimetableScreen
+        data={data}
+        onContinue={() => { setShowRewardTimetable(false); goToStep(3.5); }}
+        onBack={() => { setShowRewardTimetable(false); }}
+      />
+    );
+  }
+
   if (showRefinement && hydrated) {
     return (
       <Step3Refinement
         initialValue={data.routineRefinement}
         onComplete={(routineRefinement) => {
+          const updatedData = { ...data, routineRefinement };
           updateData({ routineRefinement });
           setShowRefinement(false);
-          goToStep(3.5);
+          // Fire seg2+3 now with refinement text included
+          setSeg2Result(null);
+          setSeg3Result(null);
+          setSeg23Error(false);
+          triggerSegment(updatedData, ["thursday", "friday", "saturday"], setSeg2Result, () => setSeg23Error(true));
+          triggerSegment(updatedData, ["sunday"], setSeg3Result, () => setSeg23Error(true));
+          if (seg23TimeoutRef.current) clearTimeout(seg23TimeoutRef.current);
+          seg23TimeoutRef.current = setTimeout(() => setSeg23Error(true), 90000);
+          goToStep(7);
         }}
         onBack={() => setShowRefinement(false)}
       />
@@ -734,9 +751,9 @@ function EmployerOnboardingPage() {
           showReward={showStep4Reward}
           onUpdate={(routines) => updateData({ memberRoutines: routines })}
           onQuietHoursUpdate={(memberQuietHours) => updateData({ memberQuietHours })}
-          onComplete={(householdRoutine) => {
-            updateData({ householdRoutine });
-            setShowRefinement(true);
+          onComplete={(householdRoutine, dailyLifeAnswers) => {
+            updateData({ householdRoutine, dailyLifeAnswers });
+            setShowRewardTimetable(true);
           }}
           onDismissReward={() => goToStep(2)}
         />
