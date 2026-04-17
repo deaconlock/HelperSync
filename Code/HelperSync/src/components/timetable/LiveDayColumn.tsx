@@ -11,13 +11,12 @@ import type { DraggableAttributes } from "@dnd-kit/core";
 import { useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
-import { TaskItem, CATEGORY_COLORS } from "@/types/timetable";
+import { TaskItem, CATEGORY_ACCENT_BG } from "@/types/timetable";
 import { getTaskEmoji, cn } from "@/lib/utils";
 import {
   CheckCircle2,
   Camera,
   MessageSquareText,
-  Plus,
   EyeOff,
   Undo2,
   Pencil,
@@ -48,7 +47,6 @@ interface LiveDayColumnProps {
   isPast: boolean;
   dailyInstructions?: Record<string, DailyInstructionData>;
   onTaskClick?: (task: TaskItem) => void;
-  onAddOneOff?: () => void;
   onSkipTask?: (taskId: string) => void;
   onUnskipTask?: (taskId: string) => void;
   onEditTask?: (task: TaskItem) => void;
@@ -98,7 +96,6 @@ export function LiveDayColumn({
   isPast,
   dailyInstructions,
   onTaskClick,
-  onAddOneOff,
   onSkipTask,
   onUnskipTask,
   onEditTask,
@@ -148,22 +145,25 @@ export function LiveDayColumn({
     const isDone = completedIds.has(task.taskId);
     const isOneOff = oneOffTaskIds?.has(task.taskId);
     const emoji = task.emoji ?? getTaskEmoji(task.taskName, task.category);
-    const categoryColor = CATEGORY_COLORS[task.category] ?? "bg-gray-100 text-gray-600";
+    const accentBg = CATEGORY_ACCENT_BG[task.category] ?? "bg-gray-300";
     const hasInstruction = !!dailyInstructions?.[task.taskId];
     const hasNotes = !!task.notes;
 
     return (
       <div
         className={cn(
-          "group px-2 py-1.5 rounded-xl text-[11px] border transition-colors relative",
-          isDone
-            ? "bg-green-50 border-green-100"
-            : categoryColor,
+          "group px-3 py-2.5 rounded-xl border border-gray-100 bg-white transition-all duration-200 relative overflow-hidden",
+          isDone && "bg-green-50 border-green-100",
           isOneOff && !isDone && "border-dashed",
-          "cursor-pointer hover:shadow-xs"
+          "cursor-pointer hover:shadow-sm"
         )}
       >
-        <div className="flex items-start gap-1">
+        {/* Category accent bar */}
+        <div className={cn(
+          "absolute left-0 inset-y-0 w-1",
+          isDone ? "bg-green-400" : accentBg
+        )} />
+        <div className="flex items-start gap-1 pl-2">
           {/* Drag handle (visible when sortable) */}
           {sortableEnabled && dragProps && !isDone && (
             <div
@@ -177,14 +177,14 @@ export function LiveDayColumn({
 
           {/* Tappable content area */}
           <div
-            className="flex items-start gap-1 flex-1 min-w-0"
+            className="flex items-center gap-2.5 flex-1 min-w-0"
             onClick={() => handleTaskTap(task)}
           >
-            <span className="text-xs flex-shrink-0">{emoji}</span>
+            <span className="text-base flex-shrink-0">{emoji}</span>
             <div className="flex-1 min-w-0">
               <p
                 className={cn(
-                  "font-medium leading-tight truncate",
+                  "text-sm font-semibold text-slate-900 leading-snug truncate",
                   isDone ? "text-green-600 line-through" : ""
                 )}
               >
@@ -193,20 +193,20 @@ export function LiveDayColumn({
                   <span className="ml-1 text-[9px] text-gray-400 font-normal">one-off</span>
                 )}
               </p>
-              <p className="text-xs opacity-60">{task.time}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{task.time}</p>
             </div>
-            <div className="flex items-center gap-0.5 flex-shrink-0">
+            <div className="flex items-center gap-1 flex-shrink-0">
               {hasInstruction && (
-                <MessageSquareText className="w-2.5 h-2.5 text-blue-500" />
+                <MessageSquareText className="w-3 h-3 text-blue-500" />
               )}
               {!hasInstruction && hasNotes && (
-                <MessageSquareText className="w-2.5 h-2.5 opacity-30" />
+                <MessageSquareText className="w-3 h-3 opacity-30" />
               )}
               {task.requiresPhoto && !isDone && (
-                <Camera className="w-2.5 h-2.5 opacity-40" />
+                <Camera className="w-3 h-3 text-slate-400" />
               )}
               {isDone && (
-                <CheckCircle2 className="w-3 h-3 text-green-500" />
+                <CheckCircle2 className="w-4 h-4 text-green-500" />
               )}
             </div>
           </div>
@@ -252,54 +252,29 @@ export function LiveDayColumn({
       )}
     >
       {/* Day header with date */}
-      <div className="mb-2 px-1">
-        <div className="flex items-center justify-between">
-          <span
-            className={cn(
-              "text-xs font-medium",
-              isToday ? "text-gray-900" : "text-text-secondary"
-            )}
-          >
-            {format(date, "EEE")}
-          </span>
-          <div className="flex items-center gap-1">
-            {onAddOneOff && (
-              <button
-                onClick={onAddOneOff}
-                title="Add one-off task"
-                className="w-5 h-5 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                <Plus className="w-3 h-3" />
-              </button>
-            )}
-            <span
-              className={cn(
-                "text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full",
-                isToday
-                  ? "bg-gray-900 text-white"
-                  : "text-text-muted"
-              )}
-            >
-              {format(date, "d")}
-            </span>
-          </div>
-        </div>
-        <p className="text-xs text-text-muted mt-0.5">{format(date, "MMM yyyy")}</p>
+      <div className="mb-4 px-1">
+        <h2 className="text-base font-bold text-gray-900 font-display">
+          {format(date, "EEEE, MMMM d")}
+        </h2>
 
-        {/* Progress bar */}
+        {/* Progress bar + encouraging copy */}
         {!dayOff && tasks.length > 0 && (
-          <div className="mt-1.5">
-            <div className="w-full bg-gray-100 rounded-full h-1">
+          <div className="mt-2">
+            <div className="w-full bg-gray-100 rounded-full h-1.5">
               <div
                 className={cn(
-                  "h-1 rounded-full transition-all duration-500",
-                  progress === 100 ? "bg-green-500" : "bg-gray-400"
+                  "h-1.5 rounded-full transition-all duration-500",
+                  progress === 100 ? "bg-green-500" : "bg-primary"
                 )}
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="text-xs text-text-muted mt-0.5">
-              {completedCount}/{tasks.length}
+            <p className="text-[11px] text-text-muted mt-1">
+              {progress === 100
+                ? `All ${tasks.length} tasks done · Great work today! 🎉`
+                : completedCount === 0
+                  ? `${tasks.length} tasks planned for today`
+                  : `${completedCount}/${tasks.length} tasks done · Keep it up!`}
             </p>
           </div>
         )}
@@ -328,7 +303,7 @@ export function LiveDayColumn({
           items={activeTasks.map((t) => `live::${day}::${t.taskId}`)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="flex-1 space-y-1">
+          <div className="flex-1 space-y-2">
             {/* Active tasks */}
             {activeTasks.map((task) => {
               const isDone = completedIds.has(task.taskId);
@@ -402,15 +377,6 @@ export function LiveDayColumn({
               </div>
             )}
 
-            {/* Add one-off task button */}
-            {onAddOneOff && (
-              <button
-                onClick={onAddOneOff}
-                className="mt-1 w-full flex items-center justify-center gap-1 py-1.5 rounded-xl border border-dashed border-gray-200 text-text-muted hover:border-gray-400 hover:text-text-secondary text-xs transition-all duration-200"
-              >
-                <Plus className="w-2.5 h-2.5" /> Add
-              </button>
-            )}
           </div>
         </SortableContext>
       )}
@@ -421,7 +387,7 @@ export function LiveDayColumn({
         onClose={() => setBottomSheetTask(null)}
       >
         {bottomSheetTask && (
-          <div className="space-y-1">
+          <div className="space-y-2">
             <p className="text-sm font-semibold text-gray-900 mb-3 px-1">
               {bottomSheetTask.emoji ?? getTaskEmoji(bottomSheetTask.taskName, bottomSheetTask.category)}{" "}
               {bottomSheetTask.taskName}

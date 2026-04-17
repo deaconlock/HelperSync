@@ -44,6 +44,33 @@ export const CATEGORY_COLORS: Record<string, string> = {
   Break: "bg-teal-50 text-teal-600 border-teal-100",
 };
 
+export const CATEGORY_BG_COLORS: Record<string, string> = {
+  "Household Chores": "bg-slate-50 border-slate-200",
+  "Baby Care": "bg-emerald-50 border-emerald-100",
+  "Elderly Care": "bg-violet-50 border-violet-100",
+  "Meal Prep": "bg-amber-50 border-amber-100",
+  Errands: "bg-rose-50 border-rose-100",
+  Break: "bg-teal-50 border-teal-100",
+};
+
+export const CATEGORY_ACCENT_COLORS: Record<string, string> = {
+  "Household Chores": "border-l-slate-400",
+  "Baby Care": "border-l-emerald-400",
+  "Elderly Care": "border-l-violet-400",
+  "Meal Prep": "border-l-amber-400",
+  Errands: "border-l-rose-400",
+  Break: "border-l-teal-400",
+};
+
+export const CATEGORY_ACCENT_BG: Record<string, string> = {
+  "Household Chores": "bg-slate-400",
+  "Baby Care": "bg-emerald-400",
+  "Elderly Care": "bg-violet-400",
+  "Meal Prep": "bg-amber-400",
+  Errands: "bg-rose-400",
+  Break: "bg-teal-400",
+};
+
 export const CATEGORY_EMOJIS: Record<string, string> = {
   "Household Chores": "🧹",
   "Baby Care": "🍼",

@@ -5,7 +5,6 @@ import { api } from "../../../../convex/_generated/api";
 import { DndContext, DragEndEvent, closestCenter } from "@dnd-kit/core";
 import { useState, useEffect, useMemo } from "react";
 import { useAnalytics } from "@/hooks/useAnalytics";
-import { DAYS_OF_WEEK, DAY_LABELS, TaskItem, DayOfWeek } from "@/types/timetable";
 import { AddTaskDialog } from "@/components/timetable/AddTaskDialog";
 import { DayColumn } from "@/components/timetable/DayColumn";
 import { LiveDayColumn } from "@/components/timetable/LiveDayColumn";
@@ -19,11 +18,13 @@ import {
   format,
   isSameDay,
 } from "date-fns";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { TimetableSkeleton } from "@/components/ui/Skeleton";
-import { CATEGORY_COLORS, CATEGORY_EMOJIS } from "@/types/timetable";
+import { DAYS_OF_WEEK, DAY_LABELS, TaskItem, DayOfWeek } from "@/types/timetable";
+import { DashboardView } from "@/components/dashboard/DashboardView";
 
-type ViewMode = "template" | "live";
+type ViewMode = "template" | "live" | "dashboard";
 
 function getWeekDates(weekOffset: number) {
   const now = new Date();
@@ -33,6 +34,8 @@ function getWeekDates(weekOffset: number) {
 
 export default function TimetablePage() {
   const { track } = useAnalytics();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   useEffect(() => { track("timetable_opened", {}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const household = useQuery(api.households.getMyHousehold);
   const timetable = useQuery(
@@ -56,6 +59,18 @@ export default function TimetablePage() {
     format(new Date(), "EEEE").toLowerCase() as DayOfWeek
   );
   const [isMobile, setIsMobile] = useState(false);
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
+
+  useEffect(() => {
+    if (!localStorage.getItem("helpersync-first-run-seen")) {
+      setShowWelcomeBanner(true);
+    }
+  }, []);
+
+  const dismissWelcome = () => {
+    localStorage.setItem("helpersync-first-run-seen", "1");
+    setShowWelcomeBanner(false);
+  };
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -63,6 +78,17 @@ export default function TimetablePage() {
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
+
+  // ?add=1 from the + nav button — open add dialog for today then clear param
+  useEffect(() => {
+    if (searchParams.get("add") === "1") {
+      const todayDay = format(new Date(), "EEEE").toLowerCase();
+      setViewMode("live");
+      setWeekOffset(0);
+      setAddDialogDay(todayDay);
+      router.replace("/dashboard/timetable");
+    }
+  }, [searchParams, router]);
 
   const weekDates = getWeekDates(weekOffset);
   const today = new Date();
@@ -305,25 +331,34 @@ export default function TimetablePage() {
     return daysOff?.find((d) => d.date === dateStr);
   };
 
-  const totalTasks = timetable.weeklyTasks.reduce((sum, d) => sum + d.tasks.length, 0);
-
   return (
     <div className="space-y-4 animate-fade-in-up">
+      {/* FTUX welcome banner */}
+      {showWelcomeBanner && (
+        <div className="px-4 py-3 rounded-2xl bg-primary/8 border border-primary/20 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Welcome to HelperSync 🎉</p>
+            <p className="text-xs text-gray-500 mt-0.5">Your personalized family plan is ready.</p>
+          </div>
+          <button onClick={dismissWelcome} className="text-gray-400 hover:text-gray-600 mt-0.5 flex-shrink-0">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Header with toggle */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl sm:text-2xl font-display font-semibold tracking-tight text-gray-900">Timetable</h1>
-          <p className="text-sm text-text-muted sm:hidden">{totalTasks} tasks</p>
+          <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-gray-900">Timetable</h1>
         </div>
         <div className="flex items-center gap-3">
-          <p className="text-sm text-text-muted hidden sm:block">{totalTasks} tasks</p>
           <div className="flex bg-gray-100 rounded-xl p-0.5 w-full sm:w-auto">
             <button
               onClick={() => setViewMode("template")}
               className={cn(
                 "flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200",
                 viewMode === "template"
-                  ? "bg-white text-gray-900 shadow-xs"
+                  ? "bg-gray-900 text-white shadow-xs"
                   : "text-text-secondary hover:text-gray-700"
               )}
             >
@@ -334,38 +369,35 @@ export default function TimetablePage() {
               className={cn(
                 "flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200",
                 viewMode === "live"
-                  ? "bg-white text-gray-900 shadow-xs"
+                  ? "bg-gray-900 text-white shadow-xs"
                   : "text-text-secondary hover:text-gray-700"
               )}
             >
               Live Schedule
             </button>
+            <button
+              onClick={() => setViewMode("dashboard")}
+              className={cn(
+                "flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200",
+                viewMode === "dashboard"
+                  ? "bg-gray-900 text-white shadow-xs"
+                  : "text-text-secondary hover:text-gray-700"
+              )}
+            >
+              Dashboard
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Category color legend */}
-      <div className="flex flex-wrap gap-2">
-        {Object.entries(CATEGORY_COLORS).map(([category, colors]) => (
-          <span
-            key={category}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium ${colors}`}
-          >
-            <span>{CATEGORY_EMOJIS[category]}</span>
-            {category}
-          </span>
-        ))}
-      </div>
 
       {/* Mobile day selector */}
-      {isMobile && (
+      {isMobile && viewMode !== "dashboard" && (
         <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">
           {DAYS_OF_WEEK.map((day, i) => {
             const isSelected = selectedMobileDay === day;
             const dayDate = weekDates[i];
             const isToday = isSameDay(dayDate, new Date());
-            const isPast = dayDate < new Date() && !isToday;
-            const taskCount = getTasksForDay(day).length;
 
             return (
               <button
@@ -376,24 +408,17 @@ export default function TimetablePage() {
                   isSelected
                     ? "bg-gray-900 text-white shadow-sm scale-105"
                     : isToday
-                      ? "bg-white text-gray-900 ring-1 ring-gray-200 shadow-sm"
-                      : isPast
-                        ? "bg-gray-50 text-text-muted"
-                        : "bg-white text-text-secondary border border-border hover:bg-gray-50"
+                      ? "bg-white text-gray-900 ring-2 ring-gray-900 shadow-sm"
+                      : "bg-white text-text-secondary border border-border hover:bg-gray-50"
                 )}
               >
                 <span>{DAY_LABELS[day].slice(0, 3)}</span>
-                {taskCount > 0 && (
-                  <span className={cn(
-                    "text-[9px] font-semibold rounded-full px-1 leading-none",
-                    isSelected ? "text-white/70" : isToday ? "text-gray-400" : "text-text-muted"
-                  )}>
-                    {taskCount}
-                  </span>
-                )}
-                {isToday && !isSelected && (
-                  <div className="w-1 h-1 rounded-full bg-gray-900" />
-                )}
+                <span className={cn(
+                  "text-[10px] font-medium leading-none",
+                  isSelected ? "text-white/80" : isToday ? "text-gray-900" : "text-text-muted"
+                )}>
+                  {format(dayDate, "d")}
+                </span>
               </button>
             );
           })}
@@ -401,11 +426,11 @@ export default function TimetablePage() {
       )}
 
       {/* Week navigator (live mode only) */}
-      {viewMode === "live" && (
+      {viewMode === "live" && household && (
         <div className="flex items-center justify-between bg-white rounded-2xl border border-border px-4 py-2.5">
           <button
             onClick={() => { setWeekOffset((w) => w - 1); setSelectedMobileDay("monday" as DayOfWeek); }}
-            className="p-1.5 text-text-muted hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+            className="p-1.5 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors duration-200"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -413,28 +438,19 @@ export default function TimetablePage() {
             <p className="text-sm font-medium text-gray-900">
               {format(weekDates[0], "d MMM")} — {format(weekDates[6], "d MMM yyyy")}
             </p>
-            {weekOffset === 0 && (
-              <p className="text-xs text-primary font-medium">This week</p>
-            )}
-            {weekOffset === 1 && (
-              <p className="text-xs text-text-muted">Next week</p>
-            )}
-            {weekOffset === -1 && (
-              <p className="text-xs text-text-muted">Last week</p>
-            )}
           </div>
           <div className="flex items-center gap-1">
             {weekOffset !== 0 && (
               <button
                 onClick={() => { setWeekOffset(0); setSelectedMobileDay(format(new Date(), "EEEE").toLowerCase() as DayOfWeek); }}
-                className="px-2 py-1 text-xs text-primary hover:bg-gray-50 rounded-lg transition-colors duration-200 font-medium"
+                className="px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 rounded-lg transition-colors duration-200 font-medium"
               >
                 Today
               </button>
             )}
             <button
               onClick={() => { setWeekOffset((w) => w + 1); setSelectedMobileDay("monday" as DayOfWeek); }}
-              className="p-1.5 text-text-muted hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+              className="p-1.5 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors duration-200"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -442,8 +458,13 @@ export default function TimetablePage() {
         </div>
       )}
 
+      {/* Dashboard view */}
+      {viewMode === "dashboard" && household && (
+        <DashboardView householdId={household._id} />
+      )}
+
       {/* Grid */}
-      {viewMode === "template" ? (
+      {viewMode !== "dashboard" && (viewMode === "template" ? (
         isMobile ? (
           /* Mobile: single day column — no DnD needed */
           <DayColumn
@@ -509,7 +530,6 @@ export default function TimetablePage() {
                 isPast={isPast}
                 dailyInstructions={instructionMaps[dayIdx]}
                 onTaskClick={(task) => setInstructionTask({ task, date: toISODate(date), dayIdx })}
-                onAddOneOff={() => setAddOneOffDay({ day: selectedMobileDay, dayIdx })}
                 onEditTask={(task) => setEditTask({ day: selectedMobileDay, task })}
                 onDeleteTask={async (taskId) => {
                   try {
@@ -528,7 +548,7 @@ export default function TimetablePage() {
                 }}
                 skippedTaskIds={skippedIds}
                 oneOffTaskIds={oneOffIds}
-                sortableEnabled
+                sortableEnabled={!showWelcomeBanner}
               />
             </DndContext>
           );
@@ -560,7 +580,6 @@ export default function TimetablePage() {
                   isPast={isPast}
                   dailyInstructions={instructionMaps[i]}
                   onTaskClick={(task) => setInstructionTask({ task, date: dateStr, dayIdx: i })}
-                  onAddOneOff={() => setAddOneOffDay({ day, dayIdx: i })}
                   onEditTask={(task) => setEditTask({ day, task })}
                   onDeleteTask={async (taskId) => {
                     try {
@@ -579,13 +598,13 @@ export default function TimetablePage() {
                   }}
                   skippedTaskIds={skippedIds}
                   oneOffTaskIds={oneOffIds}
-                  sortableEnabled
+                  sortableEnabled={!showWelcomeBanner}
                 />
               );
             })}
           </div>
         </DndContext>
-      )}
+      ))}
 
       {/* Add task dialog */}
       {addDialogDay && (

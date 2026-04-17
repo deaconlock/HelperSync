@@ -8,6 +8,7 @@ import {
   Calendar,
   User,
   Settings,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +16,17 @@ const NAV_ITEMS = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/dashboard/timetable", icon: CalendarDays, label: "Timetable" },
   { href: "/dashboard/leave", icon: Calendar, label: "Days Off" },
+  { href: "/dashboard/helper-profile", icon: User, label: "Helper" },
+  { href: "/dashboard/account", icon: Settings, label: "Account" },
+];
+
+// Left side: Timetable, Days Off | center +  | Helper, Account
+const MOBILE_NAV_LEFT = [
+  { href: "/dashboard/timetable", icon: CalendarDays, label: "Timetable" },
+  { href: "/dashboard/leave", icon: Calendar, label: "Days Off" },
+];
+
+const MOBILE_NAV_RIGHT = [
   { href: "/dashboard/helper-profile", icon: User, label: "Helper" },
   { href: "/dashboard/account", icon: Settings, label: "Account" },
 ];
@@ -46,27 +58,63 @@ export function SidebarNav() {
         })}
       </nav>
 
-      {/* Mobile bottom tab bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-border flex justify-around items-center py-2 pb-[env(safe-area-inset-bottom,8px)] z-50">
-        {NAV_ITEMS.map((item) => {
+      {/* Mobile bottom tab bar — Instagram-style */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white shadow-[0_-1px_0_0_rgba(0,0,0,0.07)] flex justify-around items-center px-2 pt-2 pb-[max(env(safe-area-inset-bottom),8px)] z-50">
+        {MOBILE_NAV_LEFT.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={cn(
-                "relative flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-xs font-medium transition-colors duration-200 min-w-[60px]",
-                isActive
-                  ? "text-gray-900"
-                  : "text-text-muted"
-              )}
+              className="flex flex-col items-center gap-1 px-4 py-1 transition-colors duration-150"
             >
-              {/* Active indicator pill */}
-              {isActive && (
-                <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-5 h-1 bg-gray-900 rounded-full" />
-              )}
-              <item.icon className={cn("w-5 h-5", isActive && "text-gray-900")} />
-              <span className={cn(isActive && "font-semibold")}>{item.label}</span>
+              <item.icon
+                className={cn(
+                  "w-6 h-6 transition-colors duration-150",
+                  isActive ? "text-gray-900" : "text-gray-400"
+                )}
+                strokeWidth={isActive ? 2.25 : 1.75}
+              />
+              <span className={cn(
+                "text-[10px] font-medium transition-colors duration-150",
+                isActive ? "text-gray-900" : "text-gray-400"
+              )}>
+                {item.label}
+              </span>
+            </Link>
+          );
+        })}
+
+        {/* Center + button */}
+        <Link
+          href="/dashboard/timetable?add=1"
+          className="flex items-center justify-center w-12 h-10 rounded-2xl bg-gray-900 transition-transform duration-150 active:scale-95 shadow-sm mx-1"
+          aria-label="Add task"
+        >
+          <Plus className="w-5 h-5 text-white" strokeWidth={2.5} />
+        </Link>
+
+        {MOBILE_NAV_RIGHT.map((item) => {
+          const isActive = pathname === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="flex flex-col items-center gap-1 px-4 py-1 transition-colors duration-150"
+            >
+              <item.icon
+                className={cn(
+                  "w-6 h-6 transition-colors duration-150",
+                  isActive ? "text-gray-900" : "text-gray-400"
+                )}
+                strokeWidth={isActive ? 2.25 : 1.75}
+              />
+              <span className={cn(
+                "text-[10px] font-medium transition-colors duration-150",
+                isActive ? "text-gray-900" : "text-gray-400"
+              )}>
+                {item.label}
+              </span>
             </Link>
           );
         })}

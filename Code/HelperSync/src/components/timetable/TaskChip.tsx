@@ -3,7 +3,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Camera } from "lucide-react";
-import { TaskItem, CATEGORY_COLORS, CATEGORY_EMOJIS } from "@/types/timetable";
+import { TaskItem, CATEGORY_ACCENT_BG, CATEGORY_EMOJIS } from "@/types/timetable";
 import { cn } from "@/lib/utils";
 
 interface TaskChipProps {
@@ -22,8 +22,7 @@ export function TaskChip({ id, task, onEdit }: TaskChipProps) {
     transition,
   };
 
-  const colorClass =
-    CATEGORY_COLORS[task.category] ?? "bg-gray-100 text-gray-700 border-gray-200";
+  const accentBg = CATEGORY_ACCENT_BG[task.category] ?? "bg-gray-300";
   const emoji = task.emoji ?? CATEGORY_EMOJIS[task.category] ?? "✅";
 
   return (
@@ -31,12 +30,14 @@ export function TaskChip({ id, task, onEdit }: TaskChipProps) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group relative rounded-xl border px-2.5 py-2 transition-all duration-200",
-        colorClass,
+        "group relative rounded-xl border border-gray-100 bg-white px-2.5 py-2 transition-all duration-200 overflow-hidden",
         isDragging ? "shadow-card-hover opacity-70 scale-105" : "hover:shadow-card"
       )}
     >
-      <div className="flex items-start gap-1.5">
+      {/* Category accent bar */}
+      <div className={cn("absolute left-0 inset-y-0 w-1", accentBg)} />
+
+      <div className="flex items-start gap-1.5 pl-2">
         {/* Drag handle */}
         <div
           {...attributes}
@@ -56,7 +57,7 @@ export function TaskChip({ id, task, onEdit }: TaskChipProps) {
             <p className="text-[11px] font-medium text-text-secondary tracking-wide mb-0.5">
               {task.time}
             </p>
-            <p className="text-xs font-medium truncate leading-tight">{task.taskName}</p>
+            <p className="text-xs font-medium text-gray-900 truncate leading-tight">{task.taskName}</p>
             <p className="text-xs text-text-muted mt-0.5">{task.area}</p>
           </div>
           {task.requiresPhoto && (

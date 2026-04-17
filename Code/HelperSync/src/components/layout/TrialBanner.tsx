@@ -5,7 +5,7 @@ import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { getTrialPhase, getDaysRemaining } from "@/lib/subscription";
 import { X, Zap, CheckCircle } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface TrialBannerProps {
   householdId: Id<"households">;
@@ -14,8 +14,14 @@ interface TrialBannerProps {
 
 export function TrialBanner({ householdId, onUpgradeClick }: TrialBannerProps) {
   const [dismissed, setDismissed] = useState(false);
+  const [isFtux, setIsFtux] = useState(true);
   const subscription = useQuery(api.subscriptions.getSubscription, { householdId });
 
+  useEffect(() => {
+    setIsFtux(!localStorage.getItem("helpersync-first-run-seen"));
+  }, []);
+
+  if (isFtux) return null;
   if (!subscription) return null;
 
   const phase = getTrialPhase(subscription);

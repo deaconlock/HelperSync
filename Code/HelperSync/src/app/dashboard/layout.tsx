@@ -7,23 +7,14 @@ import { useEffect, useCallback, useState } from "react";
 import { TopNav } from "@/components/layout/TopNav";
 import { SidebarNav } from "@/components/layout/SidebarNav";
 import { AiSidebar } from "@/components/layout/AiSidebar";
-import { TrialBanner } from "@/components/layout/TrialBanner";
-import { PaymentWallModal } from "@/components/layout/PaymentWallModal";
-import { DevTrialSimulator } from "@/components/layout/DevTrialSimulator";
 import { AiProvider, useAi } from "@/lib/ai-context";
 import { PullToRefresh } from "@/components/ui/PullToRefresh";
-import { getTrialPhase, getDaysRemaining } from "@/lib/subscription";
 
 function DashboardInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const household = useQuery(api.households.getMyHousehold);
-  const subscription = useQuery(
-    api.subscriptions.getSubscription,
-    household ? { householdId: household._id } : "skip"
-  );
   const { isOpen, initialPrompt, toggleAi, closeAi, consumePrompt } = useAi();
   const [isMobile, setIsMobile] = useState(false);
-  const [showPaymentWall, setShowPaymentWall] = useState(false);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -42,27 +33,10 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
     }
   }, [household, router]);
 
-  // Subscription gating
-  const phase = getTrialPhase(subscription);
-
-  useEffect(() => {
-    if (phase === "loading") return; // still loading, don't redirect
-    if (phase === "expired" || phase === "canceled") {
-      router.replace("/subscribe");
-    }
-    // Payment wall modal is triggered by clicking "Add payment →" in TrialBanner, not auto-shown
-  }, [phase, router]);
-
-  if (!household || phase === "loading") return null;
-
-  const daysLeft = subscription ? getDaysRemaining(subscription) : 0;
+  if (!household) return null;
 
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
-      <TrialBanner
-        householdId={household._id}
-        onUpgradeClick={() => setShowPaymentWall(true)}
-      />
       <TopNav
         household={household}
         onAiToggle={toggleAi}
@@ -85,14 +59,6 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
           onInitialPromptConsumed={consumePrompt}
         />
       </div>
-
-      {/* Payment wall modal (day 7+, no payment yet) */}
-      {showPaymentWall && phase === "payment-wall" && (
-        <PaymentWallModal householdId={household._id} daysLeft={daysLeft} />
-      )}
-
-      {/* Dev trial simulator */}
-      <DevTrialSimulator householdId={household._id} />
     </div>
   );
 }

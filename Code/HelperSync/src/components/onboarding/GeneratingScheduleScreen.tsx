@@ -143,13 +143,17 @@ function buildInsights(data: WizardData): string[] {
   const insights: string[] = [];
   const hasChild   = data.members.some(m => m.role === "Child");
   const hasElderly = data.members.some(m => m.role === "Elderly");
+  const hasPets    = data.members.some(m => m.role === "Pets");
   const ret        = data.dailyLifeAnswers?.return_time as string | undefined;
   const retMap     = { "1730":1,"1800":1,"1830":1,"1900":1,"2000":1 } as Record<string,number>;
 
-  if (hasChild)                     insights.push("Childcare tasks placed around school hours");
-  if (ret && retMap[ret])           insights.push("Dinner prep timed before your return home");
-  if (data.rooms.length >= 3)       insights.push("Cleaning spread across the week to avoid overload");
-  if (hasElderly)                   insights.push("Care check-ins scheduled throughout the day");
+  if (hasChild)                               insights.push("Childcare tasks placed around school hours");
+  if (ret && retMap[ret])                     insights.push("Dinner prep timed before your return home");
+  if (hasElderly)                             insights.push("Care check-ins scheduled throughout the day");
+  if (hasPets)                                insights.push("Morning and evening walks scheduled");
+  if (data.priorities.includes("meals"))      insights.push("Meal prep prioritised every day");
+  if (data.homeSize === "spacious")           insights.push("Deep-clean tasks rotated across the week");
+  if (data.rooms.length >= 3)                 insights.push("Cleaning spread across the week to avoid overload");
 
   return insights.slice(0, 2);
 }
@@ -281,24 +285,33 @@ export function GeneratingScheduleScreen({ data, preGenPromise }: Props) {
     const subtitle  = buildRevealSubtitle(data);
     const insights  = buildInsights(data);
     const allShown  = revealedDays.length === 7;
+    const homeName  = data.homeName || "your home";
 
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-8">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
         <div className="w-full max-w-xs flex flex-col gap-3">
 
           {/* Header */}
-          <div className="text-center mb-1">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">
-              Based on your inputs
+          <div className="text-center mb-2">
+            <div className="flex items-center justify-center mb-3">
+              <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5 text-green-600" />
+              </div>
+            </div>
+            <h1 className="text-xl font-bold text-gray-900 leading-snug mb-1">
+              Welcome to HelperSync
+            </h1>
+            <p className="text-sm text-gray-500 mb-2">
+              {homeName}&apos;s first week is ready
             </p>
-            <p className="text-base font-semibold text-gray-700">{subtitle}</p>
+            <p className="text-xs text-gray-400">{subtitle}</p>
           </div>
 
           {/* Insight chips */}
           {insights.length > 0 && (
             <div className="flex flex-wrap gap-2 justify-center mb-1">
               {insights.map((ins, i) => (
-                <span key={i} className="text-xs bg-primary/8 text-primary px-3 py-1 rounded-full font-medium">
+                <span key={i} className="text-xs bg-primary/8 text-primary px-3 py-1.5 rounded-full font-medium leading-none">
                   {ins}
                 </span>
               ))}
@@ -315,39 +328,45 @@ export function GeneratingScheduleScreen({ data, preGenPromise }: Props) {
             return (
               <div
                 key={day}
-                className="flex items-center justify-between px-4 py-3 rounded-xl border bg-white transition-all duration-500"
+                className="flex items-center justify-between px-4 py-3 rounded-2xl border bg-white transition-all duration-500"
                 style={{
                   opacity: isVisible ? 1 : 0,
                   transform: isVisible ? "translateY(0) scale(1)" : "translateY(8px) scale(0.97)",
                   borderColor: isVisible ? "rgb(229 231 235)" : "transparent",
-                  boxShadow: isVisible ? "0 1px 3px rgba(0,0,0,0.06)" : "none",
+                  boxShadow: isVisible ? "0 1px 4px rgba(0,0,0,0.07)" : "none",
                   transitionDelay: `${idx * 30}ms`,
                 }}
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-gray-900 w-24">{DAY_LABELS[day]}</span>
-                  {firstTask && (
-                    <span className="text-xs text-gray-400 truncate max-w-[110px]">
-                      {firstTask.emoji} {firstTask.time} · {firstTask.taskName}
-                    </span>
-                  )}
-                </div>
-                {isVisible && (
-                  <span className="text-xs font-medium text-primary tabular-nums flex-shrink-0">
+                {/* Left: day name + task count */}
+                <div className="flex-shrink-0">
+                  <p className="text-sm font-semibold text-gray-900">{DAY_LABELS[day]}</p>
+                  <p className={cn("text-xs text-gray-400 mt-0.5 transition-opacity duration-300", isVisible ? "opacity-100" : "opacity-0")}>
                     {taskCount} tasks
-                  </span>
-                )}
+                  </p>
+                </div>
+
+                {/* Center: first task */}
+                <div className="flex-1 px-4">
+                  <p className={cn("text-xs text-gray-500 text-right transition-opacity duration-300", isVisible ? "opacity-100" : "opacity-0")}>
+                    {firstTask ? `${firstTask.emoji} ${firstTask.time}` : ""}
+                  </p>
+                </div>
+
+                {/* Right: badge */}
+                <span className={cn("flex-shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 tabular-nums transition-opacity duration-300", isVisible ? "opacity-100" : "opacity-0")}>
+                  {taskCount || ""}
+                </span>
               </div>
             );
           })}
 
           {/* Completion moment */}
           <div className={cn(
-            "flex items-center justify-center gap-2 mt-2 transition-all duration-500",
+            "flex flex-col items-center justify-center gap-1 mt-2 transition-all duration-500",
             allShown && weekComplete ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2",
           )}>
-            <CheckCircle2 className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold text-gray-800">Your full week is ready</span>
+            <span className="text-sm font-semibold text-gray-800">Your week is ready ✓</span>
+            <span className="text-xs text-gray-400">Taking you to your dashboard…</span>
           </div>
 
         </div>

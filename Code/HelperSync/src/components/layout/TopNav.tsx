@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { UserButton } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { Sparkles, Eye, Moon, Sun } from "lucide-react";
@@ -18,6 +19,11 @@ interface TopNavProps {
 export function TopNav({ household, onAiToggle, aiSidebarOpen }: TopNavProps) {
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
+  const [isFtux, setIsFtux] = useState(true);
+
+  useEffect(() => {
+    setIsFtux(!localStorage.getItem("helpersync-first-run-seen"));
+  }, []);
 
   return (
     <header className="bg-white/80 backdrop-blur-md border-b border-border px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between flex-shrink-0 z-20 sticky top-0">
@@ -29,30 +35,34 @@ export function TopNav({ household, onAiToggle, aiSidebarOpen }: TopNavProps) {
       </div>
 
       <div className="flex items-center gap-1 sm:gap-2">
-        {/* Helper View toggle */}
-        <button
-          onClick={() => router.push("/helper")}
-          className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-sm font-medium text-text-secondary hover:bg-gray-50 rounded-xl transition-colors duration-200"
-          title="Helper View"
-        >
-          <Eye className="w-4 h-4" />
-          <span className="hidden sm:inline">Helper View</span>
-        </button>
+        {/* Helper View toggle — hidden during FTUX */}
+        {!isFtux && (
+          <button
+            onClick={() => router.push("/helper")}
+            className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-sm font-medium text-text-secondary hover:bg-gray-50 rounded-xl transition-colors duration-200"
+            title="Helper View"
+          >
+            <Eye className="w-4 h-4" />
+            <span className="hidden sm:inline">Helper View</span>
+          </button>
+        )}
 
-        {/* AI assistant toggle */}
-        <button
-          onClick={onAiToggle}
-          className={cn(
-            "flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-sm font-medium rounded-xl transition-all duration-200",
-            aiSidebarOpen
-              ? "bg-primary text-white shadow-sm"
-              : "text-text-secondary hover:bg-gray-50"
-          )}
-          title="AI Assistant"
-        >
-          <Sparkles className="w-4 h-4" />
-          <span className="hidden sm:inline">AI Assistant</span>
-        </button>
+        {/* AI assistant toggle — hidden during FTUX */}
+        {!isFtux && (
+          <button
+            onClick={onAiToggle}
+            className={cn(
+              "flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-sm font-medium rounded-xl transition-all duration-200",
+              aiSidebarOpen
+                ? "bg-primary text-white shadow-sm"
+                : "text-text-secondary hover:bg-gray-50"
+            )}
+            title="AI Assistant"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span className="hidden sm:inline">AI Assistant</span>
+          </button>
+        )}
 
         {/* Dark mode toggle */}
         <button
