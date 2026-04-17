@@ -71,6 +71,15 @@ export const CATEGORY_ACCENT_BG: Record<string, string> = {
   Break: "bg-teal-400",
 };
 
+export const CATEGORY_ICON_BG: Record<string, string> = {
+  "Household Chores": "bg-slate-100",
+  "Baby Care": "bg-emerald-100",
+  "Elderly Care": "bg-violet-100",
+  "Meal Prep": "bg-amber-100",
+  Errands: "bg-rose-100",
+  Break: "bg-teal-100",
+};
+
 export const CATEGORY_EMOJIS: Record<string, string> = {
   "Household Chores": "🧹",
   "Baby Care": "🍼",

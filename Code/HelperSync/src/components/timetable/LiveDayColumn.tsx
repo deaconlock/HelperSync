@@ -11,17 +11,15 @@ import type { DraggableAttributes } from "@dnd-kit/core";
 import { useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
-import { TaskItem, CATEGORY_ACCENT_BG } from "@/types/timetable";
+import { TaskItem, CATEGORY_ACCENT_BG, CATEGORY_ICON_BG } from "@/types/timetable";
 import { getTaskEmoji, cn } from "@/lib/utils";
 import {
-  CheckCircle2,
   Camera,
   MessageSquareText,
   EyeOff,
   Undo2,
   Pencil,
   Trash2,
-  GripVertical,
 } from "lucide-react";
 import { SwipeableTaskItem } from "./SwipeableTaskItem";
 import { BottomSheet } from "./BottomSheet";
@@ -145,6 +143,7 @@ export function LiveDayColumn({
     const isDone = completedIds.has(task.taskId);
     const isOneOff = oneOffTaskIds?.has(task.taskId);
     const emoji = task.emoji ?? getTaskEmoji(task.taskName, task.category);
+    const iconBg = isDone ? "bg-green-100" : (CATEGORY_ICON_BG[task.category] ?? "bg-gray-100");
     const accentBg = CATEGORY_ACCENT_BG[task.category] ?? "bg-gray-300";
     const hasInstruction = !!dailyInstructions?.[task.taskId];
     const hasNotes = !!task.notes;
@@ -152,82 +151,60 @@ export function LiveDayColumn({
     return (
       <div
         className={cn(
-          "group px-3 py-2.5 rounded-xl border border-gray-100 bg-white transition-all duration-200 relative overflow-hidden",
-          isDone && "bg-green-50 border-green-100",
+          "group flex items-center gap-3 px-3 py-3 rounded-2xl border border-gray-100 bg-white transition-all duration-200 relative overflow-hidden",
+          isDone && "opacity-60",
           isOneOff && !isDone && "border-dashed",
-          "cursor-pointer hover:shadow-sm"
+          sortableEnabled && !isDone ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
+          "hover:shadow-sm"
         )}
+        onClick={() => handleTaskTap(task)}
+        {...(sortableEnabled && !isDone && dragProps ? { ...dragProps.attributes, ...dragProps.listeners } : {})}
       >
         {/* Category accent bar */}
-        <div className={cn(
-          "absolute left-0 inset-y-0 w-1",
-          isDone ? "bg-green-400" : accentBg
-        )} />
-        <div className="flex items-start gap-1 pl-2">
-          {/* Drag handle (visible when sortable) */}
-          {sortableEnabled && dragProps && !isDone && (
-            <div
-              {...dragProps.attributes}
-              {...dragProps.listeners}
-              className="flex-shrink-0 mt-0.5 p-0.5 cursor-grab active:cursor-grabbing rounded hover:bg-black/5 touch-none"
-            >
-              <GripVertical className="w-2.5 h-2.5 text-gray-400" />
-            </div>
-          )}
+        <div className={cn("absolute left-0 inset-y-0 w-1", isDone ? "bg-green-400" : accentBg)} />
 
-          {/* Tappable content area */}
-          <div
-            className="flex items-center gap-2.5 flex-1 min-w-0"
-            onClick={() => handleTaskTap(task)}
-          >
-            <span className="text-base flex-shrink-0">{emoji}</span>
-            <div className="flex-1 min-w-0">
-              <p
-                className={cn(
-                  "text-sm font-semibold text-slate-900 leading-snug truncate",
-                  isDone ? "text-green-600 line-through" : ""
-                )}
-              >
-                {task.taskName}
-                {isOneOff && (
-                  <span className="ml-1 text-[9px] text-gray-400 font-normal">one-off</span>
-                )}
-              </p>
-              <p className="text-xs text-slate-400 mt-0.5">{task.time}</p>
-            </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              {hasInstruction && (
-                <MessageSquareText className="w-3 h-3 text-blue-500" />
-              )}
-              {!hasInstruction && hasNotes && (
-                <MessageSquareText className="w-3 h-3 opacity-30" />
-              )}
-              {task.requiresPhoto && !isDone && (
-                <Camera className="w-3 h-3 text-slate-400" />
-              )}
-              {isDone && (
-                <CheckCircle2 className="w-4 h-4 text-green-500" />
-              )}
-            </div>
-          </div>
+        {/* Emoji container */}
+        <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 ml-1", iconBg)}>
+          {emoji}
         </div>
 
-        {/* Desktop hover actions */}
-        {!isMobile && (
+        {/* Text content */}
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-gray-400 font-medium">{task.time}</p>
+          <p className={cn(
+            "text-sm font-semibold text-gray-900 leading-snug truncate mt-0.5",
+            isDone && "line-through text-gray-400"
+          )}>
+            {task.taskName}
+            {isOneOff && (
+              <span className="ml-1 text-[9px] text-gray-400 font-normal">one-off</span>
+            )}
+          </p>
+        </div>
+
+        {/* Right side indicators */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {hasInstruction && <MessageSquareText className="w-3.5 h-3.5 text-blue-400" />}
+          {!hasInstruction && hasNotes && <MessageSquareText className="w-3.5 h-3.5 text-gray-200" />}
+          {task.requiresPhoto && !isDone && <Camera className="w-3.5 h-3.5 text-gray-300" />}
+        </div>
+
+        {/* Desktop hover skip/unskip */}
+        {!isMobile && !isDone && (
           <>
-            {onSkipTask && !isOneOff && !isDone && (
+            {onSkipTask && !isOneOff && (
               <button
                 onClick={(e) => { e.stopPropagation(); onSkipTask(task.taskId); }}
-                className="absolute top-0.5 right-0.5 hidden group-hover:flex items-center gap-0.5 text-[9px] text-gray-400 hover:text-gray-600 px-1 py-0.5 rounded bg-white/90 border border-gray-200 shadow-xs"
+                className="absolute top-1 right-1 hidden group-hover:flex items-center gap-0.5 text-[9px] text-gray-400 hover:text-gray-600 px-1 py-0.5 rounded bg-white border border-gray-200 shadow-xs"
                 title="Skip for this day"
               >
                 <EyeOff className="w-2.5 h-2.5" />
               </button>
             )}
-            {onUnskipTask && isOneOff && !isDone && (
+            {onUnskipTask && isOneOff && (
               <button
                 onClick={(e) => { e.stopPropagation(); onUnskipTask(task.taskId); }}
-                className="absolute top-0.5 right-0.5 hidden group-hover:flex items-center gap-0.5 text-[9px] text-red-400 hover:text-red-600 px-1 py-0.5 rounded bg-white/90 border border-gray-200 shadow-xs"
+                className="absolute top-1 right-1 hidden group-hover:flex items-center gap-0.5 text-[9px] text-red-400 hover:text-red-600 px-1 py-0.5 rounded bg-white border border-gray-200 shadow-xs"
                 title="Remove one-off task"
               >
                 ✕
@@ -245,7 +222,7 @@ export function LiveDayColumn({
       className={cn(
         "flex flex-col min-h-64 rounded-2xl p-2 transition-colors duration-200 border",
         isToday
-          ? "bg-white ring-1 ring-gray-200 border-transparent shadow-sm"
+          ? "bg-white border-gray-200 shadow-sm"
           : isPast
             ? "bg-gray-50/50 opacity-60 border-transparent"
             : "bg-gray-50/50 border-transparent"
@@ -266,7 +243,7 @@ export function LiveDayColumn({
                   "h-1.5 rounded-full transition-all duration-500",
                   progress === 100 ? "bg-green-500" : "bg-primary"
                 )}
-                style={{ width: `${progress}%` }}
+                style={{ width: progress === 100 ? "100%" : `max(${progress}%, 2%)` }}
               />
             </div>
             <p className="text-[11px] text-text-muted mt-1">

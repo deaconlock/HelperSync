@@ -2,8 +2,8 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Camera } from "lucide-react";
-import { TaskItem, CATEGORY_ACCENT_BG, CATEGORY_EMOJIS } from "@/types/timetable";
+import { Camera } from "lucide-react";
+import { TaskItem, CATEGORY_ACCENT_BG, CATEGORY_ICON_BG, CATEGORY_EMOJIS } from "@/types/timetable";
 import { cn } from "@/lib/utils";
 
 interface TaskChipProps {
@@ -23,48 +23,41 @@ export function TaskChip({ id, task, onEdit }: TaskChipProps) {
   };
 
   const accentBg = CATEGORY_ACCENT_BG[task.category] ?? "bg-gray-300";
+  const iconBg = CATEGORY_ICON_BG[task.category] ?? "bg-gray-100";
   const emoji = task.emoji ?? CATEGORY_EMOJIS[task.category] ?? "✅";
 
   return (
     <div
       ref={setNodeRef}
       style={style}
+      {...attributes}
+      {...listeners}
       className={cn(
-        "group relative rounded-xl border border-gray-100 bg-white px-2.5 py-2 transition-all duration-200 overflow-hidden",
-        isDragging ? "shadow-card-hover opacity-70 scale-105" : "hover:shadow-card"
+        "group flex items-center gap-3 px-3 py-3 rounded-2xl border border-gray-100 bg-white transition-all duration-200 relative overflow-hidden cursor-grab active:cursor-grabbing",
+        isDragging ? "shadow-card-hover opacity-70 scale-105" : "hover:shadow-sm"
       )}
+      onClick={onEdit}
     >
       {/* Category accent bar */}
       <div className={cn("absolute left-0 inset-y-0 w-1", accentBg)} />
 
-      <div className="flex items-start gap-1.5 pl-2">
-        {/* Drag handle */}
-        <div
-          {...attributes}
-          {...listeners}
-          className="flex-shrink-0 mt-1 p-0.5 cursor-grab active:cursor-grabbing rounded hover:bg-black/5 touch-none"
-        >
-          <GripVertical className="w-3 h-3 text-gray-400" />
-        </div>
-
-        {/* Tappable content area — opens edit dialog */}
-        <div
-          className="flex items-start gap-2 flex-1 min-w-0 cursor-pointer"
-          onClick={onEdit}
-        >
-          <span className="text-base flex-shrink-0 mt-0.5">{emoji}</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-medium text-text-secondary tracking-wide mb-0.5">
-              {task.time}
-            </p>
-            <p className="text-xs font-medium text-gray-900 truncate leading-tight">{task.taskName}</p>
-            <p className="text-xs text-text-muted mt-0.5">{task.area}</p>
-          </div>
-          {task.requiresPhoto && (
-            <Camera className="w-3 h-3 text-text-muted flex-shrink-0 mt-1" />
-          )}
-        </div>
+      {/* Emoji container */}
+      <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 ml-1", iconBg)}>
+        {emoji}
       </div>
+
+      {/* Text content */}
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-gray-400 font-medium">{task.time}</p>
+        <p className="text-sm font-semibold text-gray-900 truncate leading-snug mt-0.5">{task.taskName}</p>
+      </div>
+
+      {/* Right side indicators */}
+      {task.requiresPhoto && (
+        <div className="flex-shrink-0">
+          <Camera className="w-3.5 h-3.5 text-gray-300" />
+        </div>
+      )}
     </div>
   );
 }

@@ -332,7 +332,7 @@ export default function TimetablePage() {
   };
 
   return (
-    <div className="space-y-4 animate-fade-in-up">
+    <div className="space-y-4 animate-fade-in-up pt-0.5">
       {/* FTUX welcome banner */}
       {showWelcomeBanner && (
         <div className="px-4 py-3 rounded-2xl bg-primary/8 border border-primary/20 flex items-start justify-between gap-3">
@@ -393,7 +393,7 @@ export default function TimetablePage() {
 
       {/* Mobile day selector */}
       {isMobile && viewMode !== "dashboard" && (
-        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">
+        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1">
           {DAYS_OF_WEEK.map((day, i) => {
             const isSelected = selectedMobileDay === day;
             const dayDate = weekDates[i];
@@ -408,7 +408,7 @@ export default function TimetablePage() {
                   isSelected
                     ? "bg-gray-900 text-white shadow-sm scale-105"
                     : isToday
-                      ? "bg-white text-gray-900 ring-2 ring-gray-900 shadow-sm"
+                      ? "bg-white text-gray-900 border-2 border-gray-900 shadow-sm"
                       : "bg-white text-text-secondary border border-border hover:bg-gray-50"
                 )}
               >

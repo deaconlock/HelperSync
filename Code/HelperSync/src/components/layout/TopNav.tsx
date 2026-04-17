@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { UserButton } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { Sparkles, Eye, Moon, Sun } from "lucide-react";
+import { Sparkles, Eye, MoonStar, Sun } from "lucide-react";
 import { HouseholdDoc } from "@/types/household";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { Logo } from "@/components/brand/Logo";
@@ -67,11 +67,11 @@ export function TopNav({ household, onAiToggle, aiSidebarOpen }: TopNavProps) {
         {/* Dark mode toggle */}
         <button
           onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-          className="p-2 text-text-secondary hover:bg-gray-50 rounded-xl transition-colors duration-200"
+          className="p-2 text-gray-800 hover:bg-gray-50 rounded-xl transition-colors duration-200"
           aria-label={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
         >
           <span className="sr-only">{resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}</span>
-          {resolvedTheme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          {resolvedTheme === "dark" ? <Sun className="w-4 h-4 text-gray-800 fill-current" /> : <MoonStar className="w-4 h-4 text-gray-800 fill-current" />}
         </button>
 
         <NotificationBell householdId={household._id as any} />
