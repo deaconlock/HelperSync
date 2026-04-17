@@ -171,7 +171,7 @@ export function Step2Members({ members, setupFor, onUpdate }: Step2Props) {
                     )}
                   </p>
                   <div className="flex flex-wrap gap-1.5 mt-1">
-                    <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full", ROLE_BADGE[member.role])}>
+                    <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full", member.role && ROLE_BADGE[member.role])}>
                       {member.role}
                     </span>
                   </div>
@@ -231,7 +231,7 @@ export function Step2Members({ members, setupFor, onUpdate }: Step2Props) {
                   </div>
 
                   {/* Age pills — only for Child, Elderly, Other */}
-                  {showAgeFor(member.role) && (
+                  {member.role && showAgeFor(member.role) && (
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-2">Age range</label>
                       <div className="flex flex-wrap gap-2">

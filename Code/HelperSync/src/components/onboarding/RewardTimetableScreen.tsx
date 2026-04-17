@@ -192,7 +192,7 @@ function buildFacts(data: WizardData): { emoji: string; label: string }[] {
   const sizeLabel = { compact: "Compact", midsize: "Mid-size", spacious: "Spacious" }[data.homeSize];
   facts.push({ emoji: "🏠", label: `${sizeLabel} · ${data.rooms.length} area${data.rooms.length !== 1 ? "s" : ""}` });
 
-  const adults  = data.members.filter(m => ["Me", "Spouse", "Relative"].includes(m.role)).length;
+  const adults  = data.members.filter(m => ["Me", "Spouse", "Relative"].includes(m.role ?? "")).length;
   const kids    = data.members.filter(m => m.role === "Child").length;
   const elderly = data.members.filter(m => m.role === "Elderly").length;
   const pets    = data.members.filter(m => m.role === "Pets").length;

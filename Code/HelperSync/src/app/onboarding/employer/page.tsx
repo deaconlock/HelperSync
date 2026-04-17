@@ -60,6 +60,11 @@ export interface WizardData {
   memberQuietHours: Record<string, string>;
   householdRoutine: string;
   dailyLifeAnswers: Record<string, string | string[]>;
+  // Legacy fields used by older step components
+  weeklyTasks?: DayTasks[] | null;
+  helperDetails?: { name?: string; nationality?: string; phone?: string; language?: string };
+  inviteCode?: string;
+  helperPace?: HelperPace;
 }
 
 const initialData: WizardData = {

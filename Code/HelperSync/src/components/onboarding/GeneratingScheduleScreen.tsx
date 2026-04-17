@@ -210,7 +210,7 @@ export function GeneratingScheduleScreen({ data, preGenPromise }: Props) {
         createHousehold({
           homeName: data.homeName || "My Household",
           rooms: data.rooms,
-          members: data.members.filter(m => m.role).map(({ timePresets: _tp, ...m }) => m),
+          members: data.members.filter((m): m is typeof m & { role: NonNullable<typeof m.role> } => !!m.role).map(({ timePresets: _tp, ...m }) => m),
           helperDetails: { name: "Helper", nationality: "", phone: "", language: "en" },
           inviteCode: code,
           inviteQrData: url,

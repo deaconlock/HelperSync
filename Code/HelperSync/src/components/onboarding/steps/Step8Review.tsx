@@ -20,7 +20,7 @@ function buildClientSummary(data: WizardData): string {
   const helperName = data.helperDetails?.name || "Your helper";
   const priorities = data.priorities.slice(0, 2).map((p) => PRIORITY_LABELS[p] ?? p);
   const priorityStr = priorities.length > 0 ? priorities.join(" and ") : "general household management";
-  const childCount = data.members.filter((m) => ["Baby", "Young Child", "School Child"].includes(m.role)).length;
+  const childCount = data.members.filter((m) => ["Baby", "Young Child", "School Child"].includes(m.role ?? "")).length;
   const elderlyCount = data.members.filter((m) => m.role === "Elderly").length;
   const careNote = childCount > 0 ? " with childcare routines built in" : elderlyCount > 0 ? " with elderly care checkpoints" : "";
   const paceNote = data.helperPace === "intensive" ? "a packed, full-day schedule" : data.helperPace === "relaxed" ? "a relaxed, quality-focused schedule" : "a steady, balanced schedule";
@@ -35,7 +35,7 @@ function buildWhatIncluded(data: WizardData): string[] {
   }
   const roomList = data.rooms.slice(0, 4).join(", ");
   if (roomList) bullets.push(`Rooms covered: ${roomList}`);
-  const childCount = data.members.filter((m) => ["Baby", "Young Child", "School Child"].includes(m.role)).length;
+  const childCount = data.members.filter((m) => ["Baby", "Young Child", "School Child"].includes(m.role ?? "")).length;
   const elderlyCount = data.members.filter((m) => m.role === "Elderly").length;
   if (childCount > 0) bullets.push(`Childcare routines for ${childCount} child${childCount > 1 ? "ren" : ""}`);
   if (elderlyCount > 0) bullets.push(`Elderly care checkpoints for ${elderlyCount} member${elderlyCount > 1 ? "s" : ""}`);
