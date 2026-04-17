@@ -108,12 +108,6 @@ export function WelcomeScreen({ onStart }: WelcomeScreenProps) {
           >
             1 month free · No credit card required · Cancel anytime
           </p>
-          <p
-            className="text-xs text-center text-gray-400 mt-2"
-            style={{ animation: "fade-in-up 0.6s cubic-bezier(0.22,1,0.36,1) 1s both" }}
-          >
-            Designed for first-time employers · Fair, balanced workloads
-          </p>
         </main>
       </div>
     </div>
