@@ -77,8 +77,8 @@ const PACE_CONFIG: Record<string, {
     workStart: "08:00",
     workEnd: "18:00",
     breaks: "1-hour lunch (12:00–13:00) + one 20-min morning break (~10:15)",
-    realTasksPerDay: "4–5",
-    totalEntriesPerDay: "6",
+    realTasksPerDay: "7–8",
+    totalEntriesPerDay: "9–10",
     restNote: "Lighter schedule — space tasks with 10–15 min gaps. Quality over quantity.",
   },
   balanced: {
@@ -86,8 +86,8 @@ const PACE_CONFIG: Record<string, {
     workStart: "07:00",
     workEnd: "19:00",
     breaks: "1-hour lunch (12:00–13:00) + one 15-min afternoon break (~15:00)",
-    realTasksPerDay: "5–6",
-    totalEntriesPerDay: "7–8",
+    realTasksPerDay: "9–11",
+    totalEntriesPerDay: "11–13",
     restNote: "Steady, sustainable pace. Short gaps between tasks where possible.",
   },
   intensive: {
@@ -95,8 +95,8 @@ const PACE_CONFIG: Record<string, {
     workStart: "07:00",
     workEnd: "20:00",
     breaks: "1-hour lunch (12:00–13:00) + one 15-min afternoon break (~15:00)",
-    realTasksPerDay: "7–8",
-    totalEntriesPerDay: "9–10",
+    realTasksPerDay: "12–14",
+    totalEntriesPerDay: "14–16",
     restNote: "Packed schedule. Protect break times strictly — no task overlap with rests.",
   },
 };
@@ -251,7 +251,7 @@ TASK RULES
 1. Use EXACT room names from the list: ${roomList}
 2. Work window: ${pace.workStart}–${pace.workEnd}. No tasks outside this window.
 3. Breaks are MANDATORY and must appear as tasks (category "Break").
-4. Generate EXACTLY ${pace.totalEntriesPerDay} tasks per day total (work tasks + breaks combined). IMPORTANT: stay within this limit — the output must fit within a strict token budget.
+4. Generate ${pace.totalEntriesPerDay} tasks per day total (work tasks + breaks combined). Fill the full work window — do not stop early.
 5. Spread tasks across the FULL day: morning, midday, AND afternoon/evening. Do NOT cluster tasks only in the morning.
 6. Noisy tasks (vacuum, mop, washing machine, blender) only when family is OUT. Check member constraints.
 7. Meal tasks: use specific times derived from member constraints. Default: breakfast 07:00, lunch 11:30, dinner 17:30.
