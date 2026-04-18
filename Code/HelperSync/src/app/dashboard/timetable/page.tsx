@@ -18,11 +18,12 @@ import {
   format,
   isSameDay,
 } from "date-fns";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Sparkles } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { TimetableSkeleton } from "@/components/ui/Skeleton";
 import { DAYS_OF_WEEK, DAY_LABELS, TaskItem, DayOfWeek } from "@/types/timetable";
 import { DashboardView } from "@/components/dashboard/DashboardView";
+import { QuickRefineSheet } from "@/components/timetable/QuickRefineSheet";
 
 type ViewMode = "template" | "live" | "dashboard";
 
@@ -50,6 +51,7 @@ export default function TimetablePage() {
   const addTask = useMutation(api.timetable.addTask);
   const deleteTask = useMutation(api.timetable.deleteTask);
   const updateTask = useMutation(api.timetable.updateTask);
+  const setTimetable = useMutation(api.timetable.setTimetable);
 
   const [viewMode, setViewMode] = useState<ViewMode>("live");
   const [weekOffset, setWeekOffset] = useState(0);
@@ -60,6 +62,7 @@ export default function TimetablePage() {
   );
   const [isMobile, setIsMobile] = useState(false);
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
+  const [showQuickRefine, setShowQuickRefine] = useState(false);
 
   useEffect(() => {
     if (!localStorage.getItem("helpersync-first-run-seen")) {
@@ -70,6 +73,45 @@ export default function TimetablePage() {
   const dismissWelcome = () => {
     localStorage.setItem("helpersync-first-run-seen", "1");
     setShowWelcomeBanner(false);
+  };
+
+  const handleRegenerate = async (feedback: string) => {
+    if (!household || !timetable) return;
+    const currentSchedule = timetable.weeklyTasks.map((d) => ({
+      day: d.day,
+      tasks: d.tasks.map((t) => ({ taskName: t.taskName, time: t.time, category: t.category, area: t.area })),
+    }));
+    const res = await fetch("/api/ai/generate-timetable", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rooms: household.rooms,
+        members: household.members,
+        helperDetails: household.helperDetails ?? { name: "Helper", nationality: "Philippines", language: "en" },
+        priorities: [],
+        helperExperience: "some",
+        refineFeedback: feedback,
+        currentSchedule,
+      }),
+    });
+    if (!res.ok || !res.body) { toast.error("Regeneration failed"); return; }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let raw = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      raw += decoder.decode(value, { stream: true });
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      const weeklyTasks = Array.isArray(parsed) ? parsed : parsed.weeklyTasks ?? [];
+      await setTimetable({ householdId: household._id, weeklyTasks });
+      dismissWelcome();
+      toast.success("Timetable updated!");
+    } catch {
+      toast.error("Could not parse updated timetable");
+    }
   };
 
   useEffect(() => {
@@ -333,18 +375,42 @@ export default function TimetablePage() {
 
   return (
     <div className="space-y-4 animate-fade-in-up pt-0.5">
-      {/* FTUX welcome banner */}
+      {/* FTUX welcome card */}
       {showWelcomeBanner && (
-        <div className="px-4 py-3 rounded-2xl bg-primary/8 border border-primary/20 flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-gray-900">Welcome to HelperSync 🎉</p>
-            <p className="text-xs text-gray-500 mt-0.5">Your personalized family plan is ready.</p>
-          </div>
-          <button onClick={dismissWelcome} className="text-gray-400 hover:text-gray-600 mt-0.5 flex-shrink-0">
+        <div className="rounded-2xl bg-gray-900 text-white px-4 py-4 flex flex-col gap-3 relative">
+          <button
+            onClick={dismissWelcome}
+            className="absolute top-3 right-3 text-white/50 hover:text-white/80 transition-colors"
+            aria-label="Dismiss"
+          >
             <X className="w-4 h-4" />
           </button>
+          <div>
+            <p className="text-base font-semibold leading-snug">Your week is ready</p>
+            <p className="text-xs text-white/60 mt-0.5">Built from your home, your routine, your family. Just tune it.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowQuickRefine(true)}
+              className="flex-1 py-2.5 rounded-xl bg-white text-gray-900 text-sm font-semibold transition-opacity hover:opacity-90 text-center"
+            >
+              Quick Refine
+            </button>
+            <button
+              onClick={dismissWelcome}
+              className="flex-1 py-2.5 rounded-xl bg-white/10 text-white text-sm font-medium transition-colors hover:bg-white/20 text-center"
+            >
+              Looks good
+            </button>
+          </div>
         </div>
       )}
+
+      <QuickRefineSheet
+        open={showQuickRefine}
+        onClose={() => setShowQuickRefine(false)}
+        onRegenerate={handleRegenerate}
+      />
 
       {/* Header with toggle */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -700,6 +766,17 @@ export default function TimetablePage() {
           onClose={() => setAddOneOffDay(null)}
         />
       )}
+
+      {/* Sticky floating refine button */}
+      <div className="fixed bottom-24 right-4 z-30 sm:bottom-6">
+        <button
+          onClick={() => setShowQuickRefine(true)}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-gray-900 text-white text-sm font-medium shadow-lg hover:opacity-90 transition-opacity"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          Refine plan
+        </button>
+      </div>
     </div>
   );
 }

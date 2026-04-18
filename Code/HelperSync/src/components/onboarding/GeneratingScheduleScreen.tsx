@@ -400,7 +400,7 @@ export function GeneratingScheduleScreen({ data, preGenPromise }: Props) {
           <h2 className="text-2xl font-display font-bold text-gray-900 mb-1">
             Building your schedule…
           </h2>
-          <p className="text-sm text-gray-400">Personalising your full 7-day plan (~20 seconds)</p>
+          <p className="text-sm text-gray-400">Personalising your full 7-day plan (~45 seconds)</p>
         </div>
 
         <div className="w-full space-y-3">
