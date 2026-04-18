@@ -12,6 +12,19 @@ import { AlertCircle, RefreshCw, CheckCircle2 } from "lucide-react";
 
 // ── Shared fetch logic ────────────────────────────────────────────────────────
 
+function deriveHelperExperience(data: WizardData): "new" | "some" | "experienced" {
+  if (data.firstTimeEmployer === true) return "new";
+  if (data.firstTimeEmployer === false) return "experienced";
+  return "some";
+}
+
+function deriveHelperPace(data: WizardData): "relaxed" | "balanced" | "intensive" {
+  const standard = data.dailyLifeAnswers?.cleaning_standard;
+  if (standard === "light") return "relaxed";
+  if (standard === "high") return "intensive";
+  return "balanced";
+}
+
 export async function fetchTimetable(data: WizardData): Promise<DayTasks[]> {
   const res = await fetch("/api/ai/generate-timetable", {
     method: "POST",
@@ -22,8 +35,11 @@ export async function fetchTimetable(data: WizardData): Promise<DayTasks[]> {
       members: data.members,
       routines: data.householdRoutine,
       memberRoutines: data.memberRoutines,
-      priorities: data.priorities,
+      memberQuietHours: data.memberQuietHours,
+      priorities: [...new Set([...(data.householdFocus ?? []), ...(data.priorities ?? [])])],
       homeSize: data.homeSize,
+      helperExperience: deriveHelperExperience(data),
+      helperPace: deriveHelperPace(data),
       daysToGenerate: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
     }),
   });
