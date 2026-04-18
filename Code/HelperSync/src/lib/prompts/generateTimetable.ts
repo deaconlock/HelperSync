@@ -77,8 +77,8 @@ const PACE_CONFIG: Record<string, {
     workStart: "08:00",
     workEnd: "18:00",
     breaks: "1-hour lunch (12:00–13:00) + one 20-min morning break (~10:15)",
-    realTasksPerDay: "7–8",
-    totalEntriesPerDay: "9–10",
+    realTasksPerDay: "6–7",
+    totalEntriesPerDay: "8–9",
     restNote: "Lighter schedule — space tasks with 10–15 min gaps. Quality over quantity.",
   },
   balanced: {
@@ -86,8 +86,8 @@ const PACE_CONFIG: Record<string, {
     workStart: "07:00",
     workEnd: "19:00",
     breaks: "1-hour lunch (12:00–13:00) + one 15-min afternoon break (~15:00)",
-    realTasksPerDay: "9–11",
-    totalEntriesPerDay: "11–13",
+    realTasksPerDay: "8–9",
+    totalEntriesPerDay: "10–11",
     restNote: "Steady, sustainable pace. Short gaps between tasks where possible.",
   },
   intensive: {
@@ -95,8 +95,8 @@ const PACE_CONFIG: Record<string, {
     workStart: "07:00",
     workEnd: "20:00",
     breaks: "1-hour lunch (12:00–13:00) + one 15-min afternoon break (~15:00)",
-    realTasksPerDay: "12–14",
-    totalEntriesPerDay: "14–16",
+    realTasksPerDay: "10–11",
+    totalEntriesPerDay: "12–13",
     restNote: "Packed schedule. Protect break times strictly — no task overlap with rests.",
   },
 };
