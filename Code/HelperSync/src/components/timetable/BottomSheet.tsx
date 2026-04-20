@@ -3,14 +3,16 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 interface BottomSheetProps {
   open: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  className?: string;
 }
 
-export function BottomSheet({ open, onClose, children }: BottomSheetProps) {
+export function BottomSheet({ open, onClose, children, className }: BottomSheetProps) {
   // Lock body scroll when open
   useEffect(() => {
     if (open) {
@@ -39,7 +41,7 @@ export function BottomSheet({ open, onClose, children }: BottomSheetProps) {
 
           {/* Sheet */}
           <motion.div
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-xl max-h-[60vh] overflow-hidden"
+            className={cn("fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-xl overflow-hidden", className ?? "max-h-[60vh]")}
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}

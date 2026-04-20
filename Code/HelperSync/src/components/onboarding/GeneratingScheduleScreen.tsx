@@ -25,6 +25,45 @@ function deriveHelperPace(data: WizardData): "relaxed" | "balanced" | "intensive
   return "balanced";
 }
 
+function deriveTargetTaskCount(data: WizardData): number {
+  const members = data.members ?? [];
+  const rooms = (data.rooms ?? []).map((r) => r.toLowerCase());
+
+  const hasBaby    = members.some((m) => m.role === "Child" && m.age === 0);
+  const hasChild   = members.some((m) => m.role === "Child" && (m.age ?? 0) > 0);
+  const hasElderly = members.some((m) => m.role === "Elderly");
+  const petWalks   = members.some((m) => m.role === "Pets")
+    ? parseInt(String(data.dailyLifeAnswers?.pets_walks ?? "2"), 10)
+    : 0;
+
+  const hasKitchen  = rooms.some((r) => r.includes("kitchen"));
+  const hasBath     = rooms.some((r) => r.includes("bathroom"));
+  const hasLiving   = rooms.some((r) => r.includes("living"));
+  const hasBedrooms = rooms.some((r) => r.includes("bedroom"));
+
+  // Mirror the logic in RewardTimetableScreen.buildDraft
+  let count = 1; // breakfast prep always
+  if (hasBaby)    count += 2; // morning feed + afternoon feed
+  if (hasElderly) count += 1; // morning routine assist
+  if (petWalks >= 1) count += 1;
+  if (petWalks >= 2) count += 1;
+  if (hasChild)   count += 1; // school run prep
+  if (hasBedrooms) count += 1;
+  if (hasLiving)   count += 1;
+  count += 1; // floors & common areas
+  count += 1; // laundry wash & hang
+  count += 2; // lunch prep + helper lunch break
+  count += 1; // ironing & folding
+  if (hasBath)    count += 1;
+  count += 3; // dinner prep + dinner served + kitchen cleanup
+  count += 1; // evening reset
+  if (hasKitchen) count += 0; // already counted via breakfast/dinner
+
+  // Add 2 for breaks (mandatory) and clamp to a sensible range
+  count += 2;
+  return Math.max(12, Math.min(count, 22));
+}
+
 export async function fetchTimetable(data: WizardData): Promise<DayTasks[]> {
   const res = await fetch("/api/ai/generate-timetable", {
     method: "POST",
@@ -40,6 +79,7 @@ export async function fetchTimetable(data: WizardData): Promise<DayTasks[]> {
       homeSize: data.homeSize,
       helperExperience: deriveHelperExperience(data),
       helperPace: deriveHelperPace(data),
+      targetTaskCount: deriveTargetTaskCount(data),
       daysToGenerate: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
     }),
   });

@@ -410,6 +410,7 @@ export default function TimetablePage() {
         open={showQuickRefine}
         onClose={() => setShowQuickRefine(false)}
         onRegenerate={handleRegenerate}
+        household={household ?? null}
       />
 
       {/* Header with toggle */}

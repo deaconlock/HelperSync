@@ -24,6 +24,7 @@ interface TimetableContext {
   homeSize?: string;
   deepCleanTasks?: string[];
   daysToGenerate?: string[];
+  targetTaskCount?: number;
   refineFeedback?: string;
   currentSchedule?: Array<{ day: string; tasks: Array<{ taskName: string; time: string; category: string; area: string }> }>;
 }
@@ -114,6 +115,9 @@ const WEEK_THEMES = [
 
 export function buildGenerateTimetablePrompt(ctx: TimetableContext): { prompt: string } {
   const pace = PACE_CONFIG[ctx.helperPace ?? "balanced"];
+  const taskTarget = ctx.targetTaskCount
+    ? `${ctx.targetTaskCount}–${ctx.targetTaskCount + 2}`
+    : pace.totalEntriesPerDay;
   const priorityList = ctx.priorities.length > 0
     ? ctx.priorities.map((p) => `"${PRIORITY_LABELS[p] ?? p}"`).join(", ")
     : '"General household management"';
@@ -251,7 +255,7 @@ TASK RULES
 1. Use EXACT room names from the list: ${roomList}
 2. Work window: ${pace.workStart}–${pace.workEnd}. No tasks outside this window.
 3. Breaks are MANDATORY and must appear as tasks (category "Break").
-4. Generate ${pace.totalEntriesPerDay} tasks per day total (work tasks + breaks combined). Fill the full work window — do not stop early.
+4. Generate ${taskTarget} tasks per day total (work tasks + breaks combined). Fill the full work window — do not stop early.
 5. Spread tasks across the FULL day: morning, midday, AND afternoon/evening. Do NOT cluster tasks only in the morning.
 6. Noisy tasks (vacuum, mop, washing machine, blender) only when family is OUT. Check member constraints.
 7. Meal tasks: use specific times derived from member constraints. Default: breakfast 07:00, lunch 11:30, dinner 17:30.
