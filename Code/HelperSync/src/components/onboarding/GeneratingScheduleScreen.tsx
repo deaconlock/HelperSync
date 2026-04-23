@@ -279,7 +279,15 @@ export function GeneratingScheduleScreen({ data, preGenPromise }: Props) {
         new Promise(r => setTimeout(r, 2000)),
       ]);
 
-      await setTimetable({ householdId, weeklyTasks: weeklyTasks as never });
+      const normalizedTasks = weeklyTasks.map((day) => ({
+        ...day,
+        tasks: day.tasks.map((task: any) => ({
+          ...task,
+          recurring: typeof task.recurring === "boolean" ? task.recurring : task.category !== "Break" && task.category !== "Errands",
+          requiresPhoto: typeof task.requiresPhoto === "boolean" ? task.requiresPhoto : ["Elderly Care", "Baby Care"].includes(task.category),
+        })),
+      }));
+      await setTimetable({ householdId, weeklyTasks: normalizedTasks as never });
 
       localStorage.removeItem("helpersync-wizard");
       localStorage.removeItem("helpersync-wizard-step");

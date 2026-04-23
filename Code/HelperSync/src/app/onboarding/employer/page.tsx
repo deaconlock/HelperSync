@@ -21,7 +21,6 @@ import { GeneratingScheduleScreen, fetchTimetable } from "@/components/onboardin
 import { DayTasks } from "@/types/timetable";
 import { toast } from "sonner";
 import { useAuth } from "@clerk/nextjs";
-import { useConvexAuth } from "convex/react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { HouseholdMember } from "@/types/household";
@@ -98,8 +97,6 @@ const STEP_NAMES: Record<number, string> = {
 function EmployerOnboardingPage() {
   const router = useRouter();
   const { isSignedIn } = useAuth();
-  const { isAuthenticated } = useConvexAuth();
-  const isConvexAuthed = isAuthenticated ?? false;
   const searchParams = useSearchParams();
 
   const [step, setStep] = useState(1);
@@ -155,11 +152,11 @@ function EmployerOnboardingPage() {
   useEffect(() => {
     if (!hydrated || completingRef.called) return;
     if (searchParams.get("completing") !== "true") return;
-    if (!isSignedIn || !isConvexAuthed) return;
+    if (!isSignedIn) return;
 
     completingRef.called = true;
     handleComplete();
-  }, [hydrated, isSignedIn, isConvexAuthed, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [hydrated, isSignedIn, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateData = useCallback((updates: Partial<WizardData>) => {
     setData((prev) => {

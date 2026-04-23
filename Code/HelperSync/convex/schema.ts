@@ -71,6 +71,10 @@ export default defineSchema({
 
   timetable: defineTable({
     householdId: v.id("households"),
+    appliedRulesSnapshot: v.optional(v.array(v.object({
+      id: v.string(),
+      title: v.string(),
+    }))),
     weeklyTasks: v.array(
       v.object({
         day: v.string(), // 'monday', 'tuesday', etc.
@@ -86,6 +90,7 @@ export default defineSchema({
             emoji: v.optional(v.string()),
             notes: v.optional(v.string()),
             duration: v.optional(v.number()),
+            passive: v.optional(v.boolean()),
           })
         ),
       })
@@ -160,6 +165,25 @@ export default defineSchema({
   })
     .index("by_helper", ["helperUserId"])
     .index("by_household", ["householdId"]),
+
+  householdRules: defineTable({
+    householdId: v.id("households"),
+    type: v.union(
+      v.literal("FIXED_TASK"),
+      v.literal("TIME_BLOCK"),
+      v.literal("CUSTOM_RULE"),
+    ),
+    title: v.string(),
+    days: v.array(v.string()),        // ["monday","tuesday",...] — empty = all days
+    startTime: v.optional(v.string()), // "13:00"
+    endTime: v.optional(v.string()),   // "14:00" — TIME_BLOCK only
+    duration: v.optional(v.number()),  // minutes — FIXED_TASK only
+    constraint: v.optional(v.string()), // "No cooking" — RECURRING_CONSTRAINT
+    notes: v.optional(v.string()),     // free text — CUSTOM_RULE
+    requiresPhoto: v.optional(v.boolean()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+  }).index("by_household", ["householdId"]),
 
   subscriptions: defineTable({
     householdId: v.id("households"),

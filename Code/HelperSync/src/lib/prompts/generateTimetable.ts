@@ -27,6 +27,11 @@ interface TimetableContext {
   targetTaskCount?: number;
   refineFeedback?: string;
   currentSchedule?: Array<{ day: string; tasks: Array<{ taskName: string; time: string; category: string; area: string }> }>;
+  householdRules?: Array<{
+    type: string; title: string; days: string[];
+    startTime?: string; endTime?: string;
+    duration?: number; constraint?: string; notes?: string;
+  }>;
 }
 
 const PRIORITY_LABELS: Record<string, string> = {
@@ -112,6 +117,20 @@ const WEEK_THEMES = [
   { day: "saturday",  focus: "Lighter chores + special family meal prep" },
   { day: "sunday",    focus: "Rest-day light duties + weekly reset" },
 ];
+
+function buildHardConstraintsSection(rules: TimetableContext["householdRules"]): string {
+  const active = rules?.filter((r) => (r as any).isActive !== false) ?? [];
+  if (!active.length) return "";
+  const lines = active.map((r) => {
+    const dayStr = r.days.length ? r.days.join(", ") : "every day";
+    if (r.type === "FIXED_TASK")
+      return `• [FIXED TASK] ${r.title}: ${dayStr} at ${r.startTime}${r.duration ? ` (${r.duration} min)` : ""}. Reserve this slot exactly — do not schedule anything else at this time.`;
+    if (r.type === "TIME_BLOCK")
+      return `• [TIME BLOCK] ${r.title}: ${dayStr} ${r.startTime}–${r.endTime}. No tasks of any kind during this window (breaks are fine).`;
+    return `• [CUSTOM] MUST follow: ${r.notes}`;
+  });
+  return `\n═══════════════════════════════\nHARD CONSTRAINTS — NON-NEGOTIABLE (DO NOT VIOLATE)\n═══════════════════════════════\nThese rules are absolute. Never move, skip, or work around them.\nAdjust all other tasks to accommodate. If constraints conflict, prioritise in the order listed.\n\n${lines.join("\n")}\n`;
+}
 
 export function buildGenerateTimetablePrompt(ctx: TimetableContext): { prompt: string } {
   const pace = PACE_CONFIG[ctx.helperPace ?? "balanced"];
@@ -237,7 +256,7 @@ Work window: ${pace.window}
 Breaks: ${pace.breaks}
 ${pace.restNote}
 
-═══════════════════════════════
+${buildHardConstraintsSection(ctx.householdRules)}═══════════════════════════════
 MEMBER ROUTINES & HARD CONSTRAINTS
 ═══════════════════════════════
 ${memberLines.length > 0 ? memberLines.join("\n\n") : "No specific constraints provided."}

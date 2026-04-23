@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useSignUp, useAuth } from "@clerk/nextjs";
-import { useConvexAuth } from "convex/react";
 import { Loader2, Mail, Lock, User as UserIcon, ArrowRight, Eye, EyeOff } from "lucide-react";
 
 interface StepSignUpProps {
@@ -11,8 +10,6 @@ interface StepSignUpProps {
 
 export function StepSignUp({ onComplete }: StepSignUpProps) {
   const { isSignedIn } = useAuth();
-  const { isAuthenticated } = useConvexAuth();
-  const isConvexAuthed = isAuthenticated ?? false;
   const { signUp, setActive, isLoaded } = useSignUp();
 
   const [phase, setPhase] = useState<"form" | "verifying" | "completing">("form");
@@ -25,13 +22,13 @@ export function StepSignUp({ onComplete }: StepSignUpProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Auto-complete if already signed in and Convex has the auth token
+  // Auto-complete if already signed in
   useEffect(() => {
-    if (isSignedIn && isConvexAuthed && phase !== "completing") {
+    if (isSignedIn && phase !== "completing") {
       setPhase("completing");
       onComplete();
     }
-  }, [isSignedIn, isConvexAuthed]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isSignedIn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleEmailSignUp = async () => {
     if (!isLoaded || !signUp) return;

@@ -49,15 +49,15 @@ const ALL_QUESTIONS: Question[] = [
     sectionLabel: "Household Setup",
     text: "What are your helper's working hours?",
     options: [
-      { value: "630_830",  emoji: "🌅", label: "6:30 AM – 8:30 PM", sub: "14 hrs · lighter household" },
+      { value: "630_830",  emoji: "🌅", label: "6:30 AM – 8:30 PM", sub: "14 hrs · early start" },
       { value: "700_900",  emoji: "☀️", label: "7:00 AM – 9:00 PM", sub: "14 hrs · typical arrangement" },
-      { value: "700_1000", emoji: "🌙", label: "7:00 AM – 10:00 PM", sub: "15 hrs · busy or late household" },
+      { value: "800_1000", emoji: "🌙", label: "8:00 AM – 10:00 PM", sub: "14 hrs · late start" },
     ],
     toLines: (a) => {
       const map: Record<string, string> = {
         "630_830":  "Helper works 6:30 AM – 8:30 PM",
         "700_900":  "Helper works 7:00 AM – 9:00 PM",
-        "700_1000": "Helper works 7:00 AM – 10:00 PM",
+        "800_1000": "Helper works 8:00 AM – 10:00 PM",
       };
       return [map[a as string]];
     },
@@ -502,20 +502,23 @@ export function Step4DailyLife({
             const meta    = SECTION_META[s];
             const isDone  = s < currentSection;
             const isActive = s === currentSection;
+            const firstIdxInSection = visibleQuestions.findIndex(q => q.section === s);
             return (
-              <div
+              <button
                 key={s}
+                disabled={!isDone}
+                onClick={() => isDone && firstIdxInSection >= 0 && setQuestionIdx(firstIdxInSection)}
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all duration-300 flex-shrink-0",
                   isActive ? "border-primary bg-primary/5 text-primary" :
-                  isDone   ? "border-green-200 bg-green-50 text-green-600" :
-                             "border-gray-200 bg-gray-50 text-gray-400"
+                  isDone   ? "border-green-200 bg-green-50 text-green-600 hover:bg-green-100 cursor-pointer" :
+                             "border-gray-200 bg-gray-50 text-gray-400 cursor-default"
                 )}
               >
                 <span>{meta.emoji}</span>
                 {(isActive || isDone) && <span>{meta.label}</span>}
                 {isDone && <Check className="w-3 h-3" />}
-              </div>
+              </button>
             );
           })}
         </div>

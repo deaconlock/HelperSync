@@ -10,6 +10,7 @@
 
 import type * as daysOff from "../daysOff.js";
 import type * as helperSessions from "../helperSessions.js";
+import type * as householdRules from "../householdRules.js";
 import type * as households from "../households.js";
 import type * as medicationLogs from "../medicationLogs.js";
 import type * as schedules from "../schedules.js";
@@ -28,6 +29,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   daysOff: typeof daysOff;
   helperSessions: typeof helperSessions;
+  householdRules: typeof householdRules;
   households: typeof households;
   medicationLogs: typeof medicationLogs;
   schedules: typeof schedules;

@@ -7,7 +7,7 @@ export const maxDuration = 60;
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { homeName, rooms, members, helperDetails, employerAvailability, wifeAvailability, priorities, routines, helperExperience, helperPace, homeSize, deepCleanTasks, refineFeedback, currentSchedule, memberRoutines, memberQuietHours, daysToGenerate, targetTaskCount } = body;
+    const { homeName, rooms, members, helperDetails, employerAvailability, wifeAvailability, priorities, routines, helperExperience, helperPace, homeSize, deepCleanTasks, refineFeedback, currentSchedule, memberRoutines, memberQuietHours, daysToGenerate, targetTaskCount, householdRules } = body;
 
     if (!rooms?.length || !members?.length) {
       return NextResponse.json({ error: "Missing required data" }, { status: 400 });
@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
       targetTaskCount: targetTaskCount ?? undefined,
       refineFeedback: refineFeedback ?? undefined,
       currentSchedule: currentSchedule ?? undefined,
+      householdRules: householdRules ?? undefined,
     });
 
     const claude = getClaudeClient();

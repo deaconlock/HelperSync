@@ -13,6 +13,7 @@ const taskSchema = v.object({
   requiresPhoto: v.boolean(),
   emoji: v.optional(v.string()),
   notes: v.optional(v.string()),
+  passive: v.optional(v.boolean()),
 });
 
 export const getTimetable = query({
@@ -35,6 +36,10 @@ export const setTimetable = mutation({
         tasks: v.array(taskSchema),
       })
     ),
+    appliedRulesSnapshot: v.optional(v.array(v.object({
+      id: v.string(),
+      title: v.string(),
+    }))),
   },
   handler: async (ctx, args) => {
     await assertHouseholdAccess(ctx, args.householdId);
@@ -43,12 +48,17 @@ export const setTimetable = mutation({
       .withIndex("by_household", (q) => q.eq("householdId", args.householdId))
       .first();
 
+    const patch = {
+      weeklyTasks: args.weeklyTasks,
+      ...(args.appliedRulesSnapshot !== undefined && { appliedRulesSnapshot: args.appliedRulesSnapshot }),
+    };
+
     if (existing) {
-      await ctx.db.patch(existing._id, { weeklyTasks: args.weeklyTasks });
+      await ctx.db.patch(existing._id, patch);
     } else {
       await ctx.db.insert("timetable", {
         householdId: args.householdId,
-        weeklyTasks: args.weeklyTasks,
+        ...patch,
       });
     }
   },

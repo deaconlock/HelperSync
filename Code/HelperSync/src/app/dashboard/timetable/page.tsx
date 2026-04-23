@@ -18,12 +18,13 @@ import {
   format,
   isSameDay,
 } from "date-fns";
-import { ChevronLeft, ChevronRight, X, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Sparkles, Plus } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { TimetableSkeleton } from "@/components/ui/Skeleton";
 import { DAYS_OF_WEEK, DAY_LABELS, TaskItem, DayOfWeek } from "@/types/timetable";
 import { DashboardView } from "@/components/dashboard/DashboardView";
 import { QuickRefineSheet } from "@/components/timetable/QuickRefineSheet";
+import { HouseholdRulesSheet } from "@/components/timetable/HouseholdRulesSheet";
 
 type ViewMode = "template" | "live" | "dashboard";
 
@@ -39,6 +40,10 @@ export default function TimetablePage() {
   const router = useRouter();
   useEffect(() => { track("timetable_opened", {}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const household = useQuery(api.households.getMyHousehold);
+  const householdRules = useQuery(
+    api.householdRules.getRules,
+    household ? { householdId: household._id } : "skip"
+  ) ?? [];
   const timetable = useQuery(
     api.timetable.getTimetable,
     household ? { householdId: household._id } : "skip"
@@ -63,6 +68,8 @@ export default function TimetablePage() {
   const [isMobile, setIsMobile] = useState(false);
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
   const [showQuickRefine, setShowQuickRefine] = useState(false);
+  const [showRulesSheet, setShowRulesSheet] = useState(false);
+  const [speedDialOpen, setSpeedDialOpen] = useState(false);
 
   useEffect(() => {
     if (!localStorage.getItem("helpersync-first-run-seen")) {
@@ -92,6 +99,7 @@ export default function TimetablePage() {
         helperExperience: "some",
         refineFeedback: feedback,
         currentSchedule,
+        householdRules: householdRules.filter((r) => r.isActive),
       }),
     });
     if (!res.ok || !res.body) { toast.error("Regeneration failed"); return; }
@@ -105,8 +113,27 @@ export default function TimetablePage() {
     }
     try {
       const parsed = JSON.parse(raw);
-      const weeklyTasks = Array.isArray(parsed) ? parsed : parsed.weeklyTasks ?? [];
-      await setTimetable({ householdId: household._id, weeklyTasks });
+      const rawTasks = Array.isArray(parsed) ? parsed : parsed.weeklyTasks ?? [];
+      const weeklyTasks = rawTasks.map((d: any) => ({
+        day: d.day,
+        tasks: d.tasks?.map((t: any) => ({
+          taskId: t.taskId,
+          time: t.time,
+          taskName: t.taskName,
+          area: t.area,
+          category: t.category,
+          recurring: t.recurring ?? true,
+          requiresPhoto: t.requiresPhoto ?? false,
+          ...(t.emoji     !== undefined && { emoji: t.emoji }),
+          ...(t.notes     !== undefined && { notes: t.notes }),
+          ...(t.duration  !== undefined && { duration: t.duration }),
+          ...(t.passive   !== undefined && { passive: t.passive }),
+        })) ?? [],
+      }));
+      const appliedRulesSnapshot = householdRules
+        .filter((r) => r.isActive)
+        .map((r) => ({ id: r._id, title: r.title }));
+      await setTimetable({ householdId: household._id, weeklyTasks, appliedRulesSnapshot });
       dismissWelcome();
       toast.success("Timetable updated!");
     } catch {
@@ -411,7 +438,19 @@ export default function TimetablePage() {
         onClose={() => setShowQuickRefine(false)}
         onRegenerate={handleRegenerate}
         household={household ?? null}
+        rules={householdRules}
+        appliedRulesSnapshot={timetable?.appliedRulesSnapshot ?? []}
+        onManageRules={() => setShowRulesSheet(true)}
       />
+
+      {household && (
+        <HouseholdRulesSheet
+          open={showRulesSheet}
+          onClose={() => setShowRulesSheet(false)}
+          householdId={household._id}
+          rules={householdRules}
+        />
+      )}
 
       {/* Header with toggle */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -460,7 +499,8 @@ export default function TimetablePage() {
 
       {/* Mobile day selector */}
       {isMobile && viewMode !== "dashboard" && (
-        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1">
+        <div className="max-w-sm mx-auto w-full">
+        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide py-1 justify-between">
           {DAYS_OF_WEEK.map((day, i) => {
             const isSelected = selectedMobileDay === day;
             const dayDate = weekDates[i];
@@ -471,7 +511,7 @@ export default function TimetablePage() {
                 key={day}
                 onClick={() => setSelectedMobileDay(day)}
                 className={cn(
-                  "flex-shrink-0 flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200 min-w-[48px]",
+                  "flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200 min-w-[44px]",
                   isSelected
                     ? "bg-gray-900 text-white shadow-sm scale-105"
                     : isToday
@@ -489,6 +529,7 @@ export default function TimetablePage() {
               </button>
             );
           })}
+        </div>
         </div>
       )}
 
@@ -768,14 +809,38 @@ export default function TimetablePage() {
         />
       )}
 
-      {/* Sticky floating refine button */}
-      <div className="fixed bottom-24 right-4 z-30 sm:bottom-6">
+      {/* Speed dial FAB */}
+      {speedDialOpen && (
+        <div className="fixed inset-0 z-30" onClick={() => setSpeedDialOpen(false)} />
+      )}
+      <div className="fixed bottom-24 right-4 z-40 sm:bottom-6 flex flex-col items-end gap-3">
+        <div className={cn(
+          "flex flex-col items-end gap-2 transition-all duration-200",
+          speedDialOpen ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-2 pointer-events-none"
+        )}>
+          <button
+            onClick={() => { setSpeedDialOpen(false); setShowQuickRefine(true); }}
+            className="flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full bg-white border border-gray-200 text-gray-800 text-sm font-medium shadow-md hover:bg-gray-50 transition-colors"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-gray-500" />
+            Refine plan
+          </button>
+          <button
+            onClick={() => { setSpeedDialOpen(false); setAddDialogDay(selectedMobileDay); }}
+            className="flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full bg-white border border-gray-200 text-gray-800 text-sm font-medium shadow-md hover:bg-gray-50 transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5 text-gray-500" />
+            Add task
+          </button>
+        </div>
         <button
-          onClick={() => setShowQuickRefine(true)}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-gray-900 text-white text-sm font-medium shadow-lg hover:opacity-90 transition-opacity"
+          onClick={() => setSpeedDialOpen((o) => !o)}
+          className={cn(
+            "w-14 h-14 rounded-full bg-gray-900 text-white shadow-lg flex items-center justify-center transition-all duration-200 hover:opacity-90",
+            speedDialOpen && "rotate-45"
+          )}
         >
-          <Sparkles className="w-3.5 h-3.5" />
-          Refine plan
+          <Plus className="w-6 h-6" />
         </button>
       </div>
     </div>
