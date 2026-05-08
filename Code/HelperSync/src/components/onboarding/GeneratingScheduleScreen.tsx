@@ -25,6 +25,17 @@ function deriveHelperPace(data: WizardData): "relaxed" | "balanced" | "intensive
   return "balanced";
 }
 
+export function deriveHomeName(data: WizardData): string {
+  const explicit = data.homeName?.trim();
+  if (explicit) return explicit;
+
+  const me = data.members?.find((m) => m.role === "Me");
+  const firstName = me?.name?.trim().split(/\s+/)[0];
+  if (!firstName) return "My Household";
+
+  return data.setupFor === "family" ? `${firstName}'s Family Home` : `${firstName}'s Home`;
+}
+
 function deriveTargetTaskCount(data: WizardData): number {
   const members = data.members ?? [];
   const rooms = (data.rooms ?? []).map((r) => r.toLowerCase());
@@ -69,7 +80,7 @@ export async function fetchTimetable(data: WizardData): Promise<DayTasks[]> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      homeName: data.homeName,
+      homeName: deriveHomeName(data),
       rooms: data.rooms,
       members: data.members,
       routines: data.householdRoutine,
@@ -268,7 +279,7 @@ export function GeneratingScheduleScreen({ data, preGenPromise }: Props) {
       const [weeklyTasks, householdId] = await Promise.all([
         genPromise.then(r => { setVisibleCount(checkmarks.length); return r; }),
         createHousehold({
-          homeName: data.homeName || "My Household",
+          homeName: deriveHomeName(data),
           rooms: data.rooms,
           members: data.members.filter((m): m is typeof m & { role: NonNullable<typeof m.role> } => !!m.role).map(({ timePresets: _tp, ...m }) => m),
           helperDetails: { name: "Helper", nationality: "", phone: "", language: "en" },

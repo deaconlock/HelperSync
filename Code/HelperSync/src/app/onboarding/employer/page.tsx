@@ -429,18 +429,14 @@ function EmployerOnboardingPage() {
       onBack={handleBack}
       canProceed={canProceed()}
       isLastStep={step === TOTAL_STEPS}
-      hideFooter={step === 3 || step === 4}
+      hideFooter={step === 1 || step === 3 || step === 4}
     >
       {step === 1 && (
         <Step1Household
           rooms={data.rooms}
-          homeName={data.homeName}
-          homeDescription={data.homeDescription}
           homeSize={data.homeSize}
-          setupFor={data.setupFor}
-          onUpdate={(rooms, homeName, homeDescription, homeSize) =>
-            updateData({ rooms, homeName, homeDescription, homeSize })
-          }
+          onUpdate={(rooms, homeSize) => updateData({ rooms, homeSize })}
+          onNext={handleNext}
         />
       )}
       {step === 2 && (

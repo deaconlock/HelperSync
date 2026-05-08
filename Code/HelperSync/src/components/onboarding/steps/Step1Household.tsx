@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { X, Plus, Home, Minus } from "lucide-react";
+import { X, Plus, Home, Minus, ArrowRight, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { HomeSize, SetupFor } from "@/app/onboarding/employer/page";
+import type { HomeSize } from "@/app/onboarding/employer/page";
 import { InfoTooltip } from "@/components/ui/InfoTooltip";
 
 // --- Constants ---
@@ -85,24 +85,22 @@ export function getDefaultDeepClean(rooms: string[]): string[] {
 
 interface Step1Props {
   rooms: string[];
-  homeName: string;
-  homeDescription: string;
   homeSize: HomeSize;
-  setupFor: SetupFor | null;
 
-  onUpdate: (rooms: string[], homeName: string, homeDescription: string, homeSize: HomeSize) => void;
+  onUpdate: (rooms: string[], homeSize: HomeSize) => void;
+  onNext: () => void;
 }
 
-export function Step1Household({ rooms, homeName, homeSize, setupFor, onUpdate }: Step1Props) {
+export function Step1Household({ rooms, homeSize, onUpdate, onNext }: Step1Props) {
   const [roomMap, setRoomMap] = useState<Record<string, number>>(() => parseRoomsToMap(rooms));
-  const [localHomeName, setLocalHomeName] = useState(homeName);
   const [localSize, setLocalSize] = useState<HomeSize>(homeSize);
   const [customRoom, setCustomRoom] = useState("");
+  const [substepIdx, setSubstepIdx] = useState<0 | 1>(0);
 
-  const isOwn = setupFor !== "family";
+  const canProceedRooms = Object.keys(roomMap).length > 0;
 
-  const emit = (map: Record<string, number>, name: string, size: HomeSize) => {
-    onUpdate(mapToRooms(map), name, "", size);
+  const emit = (map: Record<string, number>, size: HomeSize) => {
+    onUpdate(mapToRooms(map), size);
   };
 
   const tapPreset = (room: string) => {
@@ -115,14 +113,14 @@ export function Step1Household({ rooms, homeName, homeSize, setupFor, onUpdate }
       delete next[room];
     }
     setRoomMap(next);
-    emit(next, localHomeName, localSize);
+    emit(next, localSize);
   };
 
   const removeRoom = (room: string) => {
     const next = { ...roomMap };
     delete next[room];
     setRoomMap(next);
-    emit(next, localHomeName, localSize);
+    emit(next, localSize);
   };
 
   const addCustomRoom = () => {
@@ -130,63 +128,39 @@ export function Step1Household({ rooms, homeName, homeSize, setupFor, onUpdate }
     if (!trimmed || roomMap[trimmed]) return;
     const next = { ...roomMap, [trimmed]: 1 };
     setRoomMap(next);
-    emit(next, localHomeName, localSize);
+    emit(next, localSize);
     setCustomRoom("");
   };
 
   const handleSizeChange = (size: HomeSize) => {
     setLocalSize(size);
-    emit(roomMap, localHomeName, size);
+    emit(roomMap, size);
   };
 
   const allKnownRooms = new Set(PRESET_ROOMS.map((r) => r.label));
   const customRooms = Object.keys(roomMap).filter((r) => !allKnownRooms.has(r));
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col items-center text-center">
-        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-          <Home className="w-8 h-8 text-primary" />
-        </div>
-        <h2 className="text-2xl font-display font-semibold tracking-tight text-gray-900 mb-1">
-          Tell us about your home
-        </h2>
-        <p className="text-text-secondary text-sm max-w-md">
-          We'll use this to figure out what needs cleaning and how long it takes.
-        </p>
-        <p className="text-xs text-gray-400 mt-2">
-          Workloads are balanced across the week and designed to be fair and sustainable.
-        </p>
-      </div>
-
-      {/* Home name */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-0.5">
-          What do you call it at home?
-        </label>
-        <p className="text-xs text-gray-400 mb-2">Optional — your helper will see this name on their app.</p>
-        <input
-          type="text"
-          value={localHomeName}
-          onChange={(e) => {
-            setLocalHomeName(e.target.value);
-            emit(roomMap, e.target.value, localSize);
-          }}
-          placeholder={isOwn ? "e.g. The Tan Family Home" : "e.g. Mum & Dad's Place"}
-          className="w-full px-4 py-3 rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-        />
-      </div>
-
-      {/* Home size — moved above rooms */}
-      <div className="space-y-3">
-        <div>
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <h3 className="text-sm font-medium text-gray-700">How big is your home?</h3>
+  if (substepIdx === 0) {
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col items-center text-center">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+            <Home className="w-8 h-8 text-primary" />
+          </div>
+          <h2 className="text-2xl font-display font-semibold tracking-tight text-gray-900 mb-1">
+            How big is your home?
+          </h2>
+          <p className="text-text-secondary text-sm max-w-md">
+            This helps us figure out the right workload. Roughly is fine.
+          </p>
+          <div className="flex items-center gap-1.5 mt-2">
+            <p className="text-xs text-gray-400">Bigger homes get more thorough coverage.</p>
             <InfoTooltip content="This helps us get the workload right — bigger homes get more thorough coverage, smaller ones a lighter load." />
           </div>
-          <p className="text-xs text-gray-400">Roughly is fine.</p>
         </div>
+
+        {/* Size selector */}
         <div className="grid grid-cols-3 gap-2">
           {SIZE_OPTIONS.map((opt) => {
             const isSelected = localSize === opt.value;
@@ -208,16 +182,38 @@ export function Step1Household({ rooms, homeName, homeSize, setupFor, onUpdate }
             );
           })}
         </div>
+
+        {/* Navigation */}
+        <div className="pt-6">
+          <button
+            onClick={() => setSubstepIdx(1)}
+            className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-semibold text-base bg-gray-900 text-white hover:bg-gray-800 transition-all duration-200"
+          >
+            Continue
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col items-center text-center">
+        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+          <Home className="w-8 h-8 text-primary" />
+        </div>
+        <h2 className="text-2xl font-display font-semibold tracking-tight text-gray-900 mb-1">
+          Which areas need cleaning?
+        </h2>
+        <p className="text-text-secondary text-sm max-w-md">
+          Think in cleaning zones, not just rooms. If your kitchen and dining share a space, select both.
+        </p>
       </div>
 
       {/* Area picker */}
       <div className="space-y-3">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-0.5">
-            Areas to clean
-          </label>
-          <p className="text-xs text-gray-400">Think in cleaning zones, not just rooms. If your kitchen and dining share a space, select both.</p>
-        </div>
 
         {/* Grid sized for 360–430px screens (today's typical mobile range).
             390px iPhone: 358px content → 175px/chip after gap-2.
@@ -251,7 +247,7 @@ export function Step1Household({ rooms, homeName, homeSize, setupFor, onUpdate }
                       const next = { ...roomMap };
                       if (count === 1) delete next[label]; else next[label] = count - 1;
                       setRoomMap(next);
-                      emit(next, localHomeName, localSize);
+                      emit(next, localSize);
                     }}
                     disabled={count === 0}
                     aria-label={`Remove one ${label}`}
@@ -274,7 +270,7 @@ export function Step1Household({ rooms, homeName, homeSize, setupFor, onUpdate }
                     onClick={() => {
                       const next = { ...roomMap, [label]: count + 1 };
                       setRoomMap(next);
-                      emit(next, localHomeName, localSize);
+                      emit(next, localSize);
                     }}
                     aria-label={`Add one ${label}`}
                     className="w-5 h-5 rounded-full border border-primary/40 text-primary flex items-center justify-center hover:bg-primary/10 transition-colors"
@@ -323,7 +319,28 @@ export function Step1Household({ rooms, homeName, homeSize, setupFor, onUpdate }
         </div>
       </div>
 
-
+      {/* Navigation */}
+      <div className="pt-6 space-y-3">
+        <button
+          onClick={onNext}
+          disabled={!canProceedRooms}
+          className={cn(
+            "w-full flex items-center justify-center gap-2 py-4 rounded-xl font-semibold text-base transition-all duration-200",
+            canProceedRooms
+              ? "bg-gray-900 text-white hover:bg-gray-800"
+              : "bg-gray-100 text-gray-400 cursor-not-allowed"
+          )}
+        >
+          Continue
+          <ArrowRight className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => setSubstepIdx(0)}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back
+        </button>
+      </div>
     </div>
   );
 }
