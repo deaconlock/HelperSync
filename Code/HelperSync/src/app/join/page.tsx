@@ -160,12 +160,19 @@ function JoinPageInner() {
         const password = `Hs!${nanoid(20)}`; // Strong random password — never shown
         try {
           const created = await signUp.create({ username, password });
-          if (created.createdSessionId) {
-            await setActive({ session: created.createdSessionId });
-          } else {
-            setError("Could not create session. Please try again.");
+          if (created.status !== "complete") {
+            setError(`Sign-up incomplete (status: ${created.status}). Check Clerk dashboard.`);
             return;
           }
+          if (!created.createdSessionId) {
+            setError("Sign-up succeeded but no session was created. Check Clerk dashboard.");
+            return;
+          }
+          await setActive({ session: created.createdSessionId });
+          // Wait for Convex client to pick up the new Clerk identity.
+          // setActive resolves before the Convex client's auth listener fires,
+          // so calling a mutation immediately after gets "Not authenticated".
+          await new Promise((r) => setTimeout(r, 500));
         } catch (err) {
           const e = err as { errors?: Array<{ longMessage?: string; message?: string }> };
           const msg = e?.errors?.[0]?.longMessage || e?.errors?.[0]?.message || "Sign-up failed.";
@@ -174,18 +181,34 @@ function JoinPageInner() {
         }
       }
 
-      // Link this Clerk user to the household.
+      // Link this Clerk user to the household. Retry on auth-not-yet-propagated.
       const pinHash = await bcrypt.hash(pin, 10);
-      await createSession({
-        householdId: result.householdId,
-        language,
-        pinHash,
-      });
+      let lastError: unknown = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        try {
+          await createSession({
+            householdId: result.householdId,
+            language,
+            pinHash,
+          });
+          lastError = null;
+          break;
+        } catch (e) {
+          lastError = e;
+          await new Promise((r) => setTimeout(r, 400));
+        }
+      }
+      if (lastError) {
+        const msg = lastError instanceof Error ? lastError.message : "Could not link helper to household.";
+        setError(msg);
+        return;
+      }
 
       toast.success(`Welcome to ${result.homeName || "HelperSync"}!`);
       router.push("/helper");
-    } catch {
-      setError(t("pin_invalid"));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : t("pin_invalid");
+      setError(msg);
     } finally {
       setIsJoining(false);
     }
