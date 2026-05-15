@@ -8,8 +8,8 @@ export default function JoinPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to onboarding with the code pre-filled
-    router.replace(`/onboarding?code=${code}`);
+    // Redirect to the join flow with the code pre-filled
+    router.replace(`/join?code=${code}`);
   }, [code, router]);
 
   return (
