@@ -81,6 +81,9 @@ function JoinPageInner() {
 
     if (!isSignedIn) {
       const code = rawCode.toUpperCase();
+      // Mark intent so /sso-callback knows to come back to /join
+      // instead of resuming a stale employer wizard from localStorage.
+      sessionStorage.setItem("helpersync-pending-join", code);
       router.push(`/sign-in?redirect_url=/join?code=${code}`);
       toast(t("join_signin_required"));
       return;

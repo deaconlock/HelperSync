@@ -9,10 +9,19 @@ export default function SSOCallbackPage() {
   const router = useRouter();
   const { isSignedIn } = useAuth();
 
-  // If the user was in the middle of employer onboarding (wizard data in localStorage),
-  // redirect back to the employer wizard to complete setup
+  // After OAuth completes, decide where to send the user.
+  // Helper-join intent (set by /join before sign-in) always wins over a
+  // stale employer-wizard resume — otherwise leftover localStorage from
+  // earlier testing can hijack a helper into the employer wizard.
   useEffect(() => {
     if (!isSignedIn) return;
+
+    const pendingJoin = sessionStorage.getItem("helpersync-pending-join");
+    if (pendingJoin) {
+      sessionStorage.removeItem("helpersync-pending-join");
+      router.replace(`/join?code=${pendingJoin}`);
+      return;
+    }
 
     const wizardData = localStorage.getItem("helpersync-wizard");
     if (wizardData) {
