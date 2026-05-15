@@ -31,4 +31,11 @@ export const en = {
   join_signin_required: "Please sign in to join a household",
   join_employer_link: "Set up your household",
   join_employer_question: "Are you an employer?",
+  pin_title: "Enter your 4-digit PIN",
+  pin_subtitle: "Ask your employer for the PIN they set for you.",
+  pin_invalid: "Wrong PIN. Please try again.",
+  pin_no_pin_set: "Your employer hasn't set a PIN yet. Please ask them.",
+  pin_continue: "Continue",
+  pin_verifying: "Verifying...",
+  joining_household: "Joining {home}...",
 };

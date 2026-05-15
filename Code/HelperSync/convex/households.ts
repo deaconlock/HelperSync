@@ -1,6 +1,10 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
+function generatePin(): string {
+  return Math.floor(1000 + Math.random() * 9000).toString();
+}
+
 export const createHousehold = mutation({
   args: {
     homeName: v.string(),
@@ -50,7 +54,7 @@ export const createHousehold = mutation({
       .first();
 
     if (existing) {
-      // Update instead of create
+      // Update instead of create — preserve existing PIN, generate one if missing
       await ctx.db.patch(existing._id, {
         homeName: args.homeName,
         rooms: args.rooms,
@@ -58,6 +62,7 @@ export const createHousehold = mutation({
         helperDetails: args.helperDetails,
         inviteCode: args.inviteCode,
         inviteQrData: args.inviteQrData,
+        helperPin: existing.helperPin ?? generatePin(),
       });
 
       // Delete old subscription and create a fresh 14-day trial
@@ -86,6 +91,7 @@ export const createHousehold = mutation({
       helperDetails: args.helperDetails,
       inviteCode: args.inviteCode,
       inviteQrData: args.inviteQrData,
+      helperPin: generatePin(),
       createdAt: Date.now(),
     });
 
@@ -230,6 +236,76 @@ export const devResetHousehold = mutation({
     await ctx.db.delete(hId);
 
     return { deleted: true };
+  },
+});
+
+// Idempotent: returns existing PIN, or generates and stores one if missing.
+// Called from the employer-side helper-profile page so old households
+// (created before helperPin was added) get a PIN on first view.
+export const ensureHelperPin = mutation({
+  args: { householdId: v.id("households") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const household = await ctx.db.get(args.householdId);
+    if (!household) throw new Error("Household not found");
+    if (household.employerUserId !== identity.subject) {
+      throw new Error("Not authorized");
+    }
+
+    if (household.helperPin) return household.helperPin;
+
+    const pin = generatePin();
+    await ctx.db.patch(args.householdId, { helperPin: pin });
+    return pin;
+  },
+});
+
+export const regenerateHelperPin = mutation({
+  args: { householdId: v.id("households") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const household = await ctx.db.get(args.householdId);
+    if (!household) throw new Error("Household not found");
+    if (household.employerUserId !== identity.subject) {
+      throw new Error("Not authorized");
+    }
+
+    const pin = generatePin();
+    await ctx.db.patch(args.householdId, { helperPin: pin });
+    return pin;
+  },
+});
+
+// Server-side PIN verification for the helper join flow.
+// Returns householdId + language only when invite code AND PIN both match.
+export const verifyHelperPin = query({
+  args: { inviteCode: v.string(), pin: v.string() },
+  handler: async (ctx, args) => {
+    const household = await ctx.db
+      .query("households")
+      .withIndex("by_invite_code", (q) =>
+        q.eq("inviteCode", args.inviteCode.toUpperCase())
+      )
+      .first();
+
+    if (!household) return { valid: false as const };
+    if (!household.helperPin) {
+      return { valid: false as const, reason: "no_pin_set" as const };
+    }
+    if (household.helperPin !== args.pin) {
+      return { valid: false as const, reason: "wrong_pin" as const };
+    }
+
+    return {
+      valid: true as const,
+      householdId: household._id,
+      helperLanguage: household.helperDetails?.language ?? "en",
+      homeName: household.homeName,
+    };
   },
 });
 

@@ -31,4 +31,11 @@ export const id = {
   join_signin_required: "Silakan masuk untuk bergabung",
   join_employer_link: "Siapkan rumah tangga Anda",
   join_employer_question: "Apakah Anda seorang majikan?",
+  pin_title: "Masukkan PIN 4 digit Anda",
+  pin_subtitle: "Tanyakan kepada majikan Anda PIN yang mereka tetapkan.",
+  pin_invalid: "PIN salah. Silakan coba lagi.",
+  pin_no_pin_set: "Majikan Anda belum mengatur PIN. Silakan tanyakan.",
+  pin_continue: "Lanjutkan",
+  pin_verifying: "Memverifikasi...",
+  joining_household: "Bergabung ke {home}...",
 };

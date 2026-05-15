@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import QRCode from "react-qr-code";
@@ -16,6 +17,15 @@ export default function HelperProfilePage() {
     household ? { householdId: household._id } : "skip"
   );
   const regenerateCode = useMutation(api.households.regenerateInviteCode);
+  const ensurePin = useMutation(api.households.ensureHelperPin);
+  const regeneratePin = useMutation(api.households.regenerateHelperPin);
+
+  // Backfill PIN for households created before helperPin existed
+  useEffect(() => {
+    if (household && !household.helperPin) {
+      ensurePin({ householdId: household._id }).catch(() => {});
+    }
+  }, [household, ensurePin]);
 
   if (!household) return <HelperProfileSkeleton />;
 
@@ -26,7 +36,8 @@ export default function HelperProfilePage() {
         household.inviteCode,
         appUrl,
         helper.name,
-        helper.language
+        helper.language,
+        household.helperPin
       )
     : "";
   const waLink = helper ? buildWhatsAppLink(helper.phone, waMessage) : "";
@@ -45,9 +56,24 @@ export default function HelperProfilePage() {
     }
   };
 
+  const handleRegeneratePin = async () => {
+    try {
+      await regeneratePin({ householdId: household._id });
+      toast.success("New PIN generated!");
+    } catch {
+      toast.error("Failed to regenerate PIN");
+    }
+  };
+
   const copyCode = () => {
     navigator.clipboard.writeText(household.inviteCode);
     toast.success("Invite code copied!");
+  };
+
+  const copyPin = () => {
+    if (!household.helperPin) return;
+    navigator.clipboard.writeText(household.helperPin);
+    toast.success("PIN copied!");
   };
 
   return (
@@ -104,12 +130,12 @@ export default function HelperProfilePage() {
 
           {/* Invite code card */}
           <div className="bg-white rounded-2xl border border-border p-6">
-            <h3 className="font-medium text-gray-900 mb-4">Invite Code</h3>
+            <h3 className="font-medium text-gray-900 mb-4">Invite Code & PIN</h3>
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-center sm:items-start">
               <div className="p-3 bg-white border border-border rounded-xl flex-shrink-0">
                 <QRCode value={household.inviteQrData} size={100} />
               </div>
-              <div className="space-y-3 w-full sm:w-auto text-center sm:text-left">
+              <div className="space-y-4 w-full sm:w-auto text-center sm:text-left">
                 <div>
                   <p className="text-xs text-text-muted mb-1">6-character code</p>
                   <div className="flex items-center justify-center sm:justify-start gap-2">
@@ -119,10 +145,39 @@ export default function HelperProfilePage() {
                     <button
                       onClick={copyCode}
                       className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors"
+                      aria-label="Copy invite code"
                     >
                       <Copy className="w-4 h-4" />
                     </button>
                   </div>
+                </div>
+                <div>
+                  <p className="text-xs text-text-muted mb-1">Helper PIN</p>
+                  <div className="flex items-center justify-center sm:justify-start gap-2">
+                    <span className="text-3xl font-mono font-semibold text-primary tracking-[0.3em]">
+                      {household.helperPin ?? "····"}
+                    </span>
+                    {household.helperPin && (
+                      <button
+                        onClick={copyPin}
+                        className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors"
+                        aria-label="Copy PIN"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button
+                      onClick={handleRegeneratePin}
+                      className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors"
+                      aria-label="Regenerate PIN"
+                      title="Generate a new PIN"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <p className="text-xs text-text-muted mt-1">
+                    Share this PIN with your helper alongside the code
+                  </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <button

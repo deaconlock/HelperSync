@@ -31,4 +31,11 @@ export const my = {
   join_signin_required: "ဝင်ရောက်ရန် Sign in လုပ်ပါ",
   join_employer_link: "သင့်အိမ်ထောင်စု ဖန်တီးပါ",
   join_employer_question: "သင်သည် အလုပ်ရှင်လား?",
+  pin_title: "သင့် PIN ၄ လုံး ထည့်ပါ",
+  pin_subtitle: "သင့်အလုပ်ရှင်ထံမှ PIN ကို တောင်းပါ။",
+  pin_invalid: "PIN မမှန်ပါ။ ပြန်ကြိုးစားပါ။",
+  pin_no_pin_set: "သင့်အလုပ်ရှင်က PIN မသတ်မှတ်ရသေးပါ။ မေးကြည့်ပါ။",
+  pin_continue: "ဆက်လုပ်ရန်",
+  pin_verifying: "စစ်ဆေးနေသည်...",
+  joining_household: "{home} သို့ ဝင်နေသည်...",
 };

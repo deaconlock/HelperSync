@@ -10,13 +10,15 @@ export function buildHelperWhatsAppMessage(
   inviteCode: string,
   appUrl: string,
   helperName: string,
-  language: string
+  language: string,
+  pin?: string
 ): string {
+  const pinLine = pin ? `\nPIN: ${pin}` : "";
   const messages: Record<string, string> = {
-    en: `Hi ${helperName}! You've been invited to join HelperSync. Use invite code: ${inviteCode} or click: ${appUrl}/join/${inviteCode}`,
-    my: `မင်္ဂလာပါ ${helperName}! HelperSync တွင် ပါဝင်ရန် ဖိတ်ကြားပါသည်။ ကုဒ်: ${inviteCode} သို့မဟုတ် နှိပ်ပါ: ${appUrl}/join/${inviteCode}`,
-    tl: `Kumusta ${helperName}! Inimbitahan ka sa HelperSync. Gamitin ang code: ${inviteCode} o bisitahin: ${appUrl}/join/${inviteCode}`,
-    id: `Halo ${helperName}! Anda diundang bergabung di HelperSync. Gunakan kode: ${inviteCode} atau kunjungi: ${appUrl}/join/${inviteCode}`,
+    en: `Hi ${helperName}! You've been invited to join HelperSync.\nLink: ${appUrl}/join/${inviteCode}\nCode: ${inviteCode}${pinLine}`,
+    my: `မင်္ဂလာပါ ${helperName}! HelperSync တွင် ပါဝင်ရန် ဖိတ်ကြားပါသည်။\nLink: ${appUrl}/join/${inviteCode}\nကုဒ်: ${inviteCode}${pinLine}`,
+    tl: `Kumusta ${helperName}! Inimbitahan ka sa HelperSync.\nLink: ${appUrl}/join/${inviteCode}\nCode: ${inviteCode}${pinLine}`,
+    id: `Halo ${helperName}! Anda diundang bergabung di HelperSync.\nLink: ${appUrl}/join/${inviteCode}\nKode: ${inviteCode}${pinLine}`,
   };
   return messages[language] ?? messages.en;
 }

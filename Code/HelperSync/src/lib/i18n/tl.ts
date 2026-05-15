@@ -31,4 +31,11 @@ export const tl = {
   join_signin_required: "Mangyaring mag-sign in upang sumali",
   join_employer_link: "I-set up ang iyong sambahayan",
   join_employer_question: "Ikaw ba ay isang amo?",
+  pin_title: "Ilagay ang iyong 4-digit na PIN",
+  pin_subtitle: "Hingin sa iyong amo ang PIN na inilaan para sa iyo.",
+  pin_invalid: "Maling PIN. Subukan muli.",
+  pin_no_pin_set: "Wala pang PIN ang iyong amo. Pakitanong sila.",
+  pin_continue: "Magpatuloy",
+  pin_verifying: "Vine-verify...",
+  joining_household: "Sumasali sa {home}...",
 };

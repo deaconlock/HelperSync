@@ -41,6 +41,7 @@ export default defineSchema({
     ),
     inviteCode: v.string(), // 6-char uppercase alphanumeric
     inviteQrData: v.string(), // full URL for QR
+    helperPin: v.optional(v.string()), // 4-digit numeric, employer-shared with helper
     createdAt: v.number(),
   })
     .index("by_employer", ["employerUserId"])
