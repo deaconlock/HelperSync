@@ -10,6 +10,7 @@ const isPublicRoute = createRouteMatcher([
   "/sso-callback(.*)",
   "/api/ai/(.*)",
   "/api/webhooks/polar(.*)",
+  "/api/invite/(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
