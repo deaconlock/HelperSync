@@ -88,15 +88,39 @@ function JoinPageInner() {
     };
   }, [inviteCode, autoDetected]);
 
-  const handleCodeSubmit = () => {
-    const rawCode = inviteCode.replace("-", "");
+  const [isValidating, setIsValidating] = useState(false);
+
+  const handleCodeSubmit = async () => {
+    const rawCode = inviteCode.replace("-", "").toUpperCase();
     if (rawCode.length !== 6) {
       setError(t("join_invalid_format"));
       return;
     }
-    // The auto-detect effect normally handles advancing. If for some reason
-    // it hasn't (e.g. network blip), trigger it manually.
-    setAutoDetected(false);
+
+    setIsValidating(true);
+    setError("");
+
+    try {
+      const response = await fetch(`/api/invite/validate?code=${rawCode}`);
+      const data = await response.json();
+
+      if (!data.valid || !data.householdId) {
+        setError(t("join_invalid_code"));
+        return;
+      }
+
+      if (data.helperLanguage && ["en", "my", "tl", "id"].includes(data.helperLanguage)) {
+        setLanguage(data.helperLanguage as Language);
+      }
+      setHouseholdInfo({ householdId: data.householdId, homeName: data.homeName ?? "" });
+      setAutoDetected(true);
+      setStep("pin");
+      setTimeout(() => pinInputRef.current?.focus(), 50);
+    } catch {
+      setError(t("join_invalid_code"));
+    } finally {
+      setIsValidating(false);
+    }
   };
 
   const handlePinSubmit = async () => {
@@ -237,10 +261,16 @@ function JoinPageInner() {
 
                 <button
                   onClick={handleCodeSubmit}
-                  disabled={inviteCode.replace("-", "").length < 6}
-                  className="w-full py-4 bg-gray-900 text-white rounded-xl font-display font-semibold text-base hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+                  disabled={isValidating || inviteCode.replace("-", "").length < 6}
+                  className="w-full py-4 bg-gray-900 text-white rounded-xl font-display font-semibold text-base hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
                 >
-                  {t("join_button")}
+                  {isValidating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> {t("join_joining")}
+                    </>
+                  ) : (
+                    t("join_button")
+                  )}
                 </button>
               </div>
 
