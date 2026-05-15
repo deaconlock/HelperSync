@@ -22,4 +22,13 @@ export const tl = {
   task_done_toast: "Tapos na ang gawain!",
   photo_required: "Kailangan ng larawan",
   uploading: "Ina-upload...",
+  join_title: "Inimbita ka ng iyong amo",
+  join_subtitle: "Ilagay ang 6-character na code na ibinigay nila upang magsimula.",
+  join_button: "Sumali sa Sambahayan",
+  join_joining: "Sumasali...",
+  join_invalid_code: "Mali ang invite code. Pakisuri at subukan muli.",
+  join_invalid_format: "Mangyaring maglagay ng wastong 6-character na code",
+  join_signin_required: "Mangyaring mag-sign in upang sumali",
+  join_employer_link: "I-set up ang iyong sambahayan",
+  join_employer_question: "Ikaw ba ay isang amo?",
 };

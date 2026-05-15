@@ -22,4 +22,13 @@ export const my = {
   task_done_toast: "အလုပ်ပြီးသည်!",
   photo_required: "ဓာတ်ပုံ လိုအပ်သည်",
   uploading: "တင်နေသည်...",
+  join_title: "သင့်အလုပ်ရှင်က သင့်ကို ဖိတ်ခေါ်ထားပါသည်",
+  join_subtitle: "စတင်ရန် သူတို့ပေးထားသော အက္ခရာ ၆ လုံး ကုဒ်ကို ထည့်ပါ။",
+  join_button: "အိမ်ထောင်စုသို့ ဝင်ရန်",
+  join_joining: "ဝင်နေသည်...",
+  join_invalid_code: "ဖိတ်ခေါ်မှု ကုဒ် မမှန်ပါ။ စစ်ဆေးပြီး ပြန်ကြိုးစားပါ။",
+  join_invalid_format: "မှန်ကန်သော အက္ခရာ ၆ လုံး ကုဒ် ထည့်ပါ",
+  join_signin_required: "ဝင်ရောက်ရန် Sign in လုပ်ပါ",
+  join_employer_link: "သင့်အိမ်ထောင်စု ဖန်တီးပါ",
+  join_employer_question: "သင်သည် အလုပ်ရှင်လား?",
 };

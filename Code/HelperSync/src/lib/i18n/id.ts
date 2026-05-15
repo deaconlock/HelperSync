@@ -22,4 +22,13 @@ export const id = {
   task_done_toast: "Tugas selesai!",
   photo_required: "Foto diperlukan",
   uploading: "Mengunggah...",
+  join_title: "Majikan Anda telah mengundang Anda",
+  join_subtitle: "Masukkan kode 6 karakter yang mereka bagikan untuk memulai.",
+  join_button: "Gabung Rumah Tangga",
+  join_joining: "Bergabung...",
+  join_invalid_code: "Kode undangan tidak valid. Silakan periksa dan coba lagi.",
+  join_invalid_format: "Silakan masukkan kode 6 karakter yang valid",
+  join_signin_required: "Silakan masuk untuk bergabung",
+  join_employer_link: "Siapkan rumah tangga Anda",
+  join_employer_question: "Apakah Anda seorang majikan?",
 };

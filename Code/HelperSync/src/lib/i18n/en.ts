@@ -22,4 +22,13 @@ export const en = {
   task_done_toast: "Task marked as done!",
   photo_required: "Photo required",
   uploading: "Uploading...",
+  join_title: "Your employer has invited you",
+  join_subtitle: "Enter the 6-character code they shared with you to get started.",
+  join_button: "Join Household",
+  join_joining: "Joining...",
+  join_invalid_code: "Invalid invite code. Please check and try again.",
+  join_invalid_format: "Please enter a valid 6-character code",
+  join_signin_required: "Please sign in to join a household",
+  join_employer_link: "Set up your household",
+  join_employer_question: "Are you an employer?",
 };
