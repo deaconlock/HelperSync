@@ -26,7 +26,11 @@ export default function SSOCallbackPage() {
     const wizardData = localStorage.getItem("helpersync-wizard");
     if (wizardData) {
       router.replace("/onboarding/employer?completing=true");
+      return;
     }
+
+    // Returning user with no in-progress wizard or pending join: send to dashboard.
+    router.replace("/dashboard");
   }, [isSignedIn, router]);
 
   return (
