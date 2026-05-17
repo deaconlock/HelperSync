@@ -75,7 +75,9 @@ function deriveTargetTaskCount(data: WizardData): number {
   return Math.max(12, Math.min(count, 22));
 }
 
-export async function fetchTimetable(data: WizardData): Promise<DayTasks[]> {
+const WEEK_ORDER = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+
+async function fetchTimetableChunk(data: WizardData, days: string[]): Promise<DayTasks[]> {
   const res = await fetch("/api/ai/generate-timetable", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -91,11 +93,11 @@ export async function fetchTimetable(data: WizardData): Promise<DayTasks[]> {
       helperExperience: deriveHelperExperience(data),
       helperPace: deriveHelperPace(data),
       targetTaskCount: deriveTargetTaskCount(data),
-      daysToGenerate: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
+      daysToGenerate: days,
     }),
   });
 
-  if (!res.ok || !res.body) throw new Error("Generation failed");
+  if (!res.ok || !res.body) throw new Error(`Generation failed (HTTP ${res.status})`);
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -112,7 +114,23 @@ export async function fetchTimetable(data: WizardData): Promise<DayTasks[]> {
   const parsed: DayTasks[] = JSON.parse(arrMatch[0]);
   if (!Array.isArray(parsed) || !parsed[0]?.day) throw new Error("Invalid timetable data");
 
-  return parsed.map((dayObj: DayTasks) => ({
+  return parsed;
+}
+
+export async function fetchTimetable(data: WizardData): Promise<DayTasks[]> {
+  // Split into two parallel calls to stay well under the 60s Vercel function limit.
+  const [firstHalf, secondHalf] = await Promise.all([
+    fetchTimetableChunk(data, ["monday", "tuesday", "wednesday", "thursday"]),
+    fetchTimetableChunk(data, ["friday", "saturday", "sunday"]),
+  ]);
+
+  const byDay = new Map<string, DayTasks>();
+  [...firstHalf, ...secondHalf].forEach((d) => byDay.set(d.day, d));
+
+  const ordered = WEEK_ORDER.map((day) => byDay.get(day)).filter((d): d is DayTasks => !!d);
+  if (ordered.length !== 7) throw new Error(`Expected 7 days, got ${ordered.length}`);
+
+  return ordered.map((dayObj) => ({
     ...dayObj,
     tasks: dayObj.tasks.map(({ passive: _passive, ...t }) => ({
       ...t,
